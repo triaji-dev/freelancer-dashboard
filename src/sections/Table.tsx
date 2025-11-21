@@ -105,8 +105,48 @@ export default function App(): React.JSX.Element {
   
   // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isInitialLoad = useRef<boolean>(true);
 
   // --- Effects ---
+  // Load data from localStorage on mount
+  useEffect(() => {
+    const savedColumns = localStorage.getItem('freelancer-dashboard-columns');
+    const savedRows = localStorage.getItem('freelancer-dashboard-rows');
+    
+    if (savedColumns) {
+      try {
+        setColumns(JSON.parse(savedColumns));
+      } catch (error) {
+        console.error('Error loading columns from localStorage:', error);
+      }
+    }
+    
+    if (savedRows) {
+      try {
+        setRows(JSON.parse(savedRows));
+      } catch (error) {
+        console.error('Error loading rows from localStorage:', error);
+      }
+    }
+    
+    // Mark initial load as complete
+    isInitialLoad.current = false;
+  }, []);
+
+  // Save columns to localStorage whenever they change (skip initial load)
+  useEffect(() => {
+    if (!isInitialLoad.current) {
+      localStorage.setItem('freelancer-dashboard-columns', JSON.stringify(columns));
+    }
+  }, [columns]);
+
+  // Save rows to localStorage whenever they change (skip initial load)
+  useEffect(() => {
+    if (!isInitialLoad.current) {
+      localStorage.setItem('freelancer-dashboard-rows', JSON.stringify(rows));
+    }
+  }, [rows]);
+
   // Detect system color scheme preference on mount
   useEffect(() => {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
