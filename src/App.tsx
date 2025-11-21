@@ -1,9 +1,8 @@
+import Table from './sections/Table';
+
 function App() {
-  return (
-    <>
-      <div>Hello, World!</div>
-    </>
-  );
+  return <Table />;
 }
 
 export default App;
+
