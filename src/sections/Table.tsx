@@ -1,59 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  ArrowUpDown, 
-  Trash2, 
-  Plus, 
-  Download, 
-  Upload, 
-  Type, 
-  X, 
-  ExternalLink, 
-  ArrowUp, 
-  ArrowDown, 
-  Filter,
-  FilterX,
-  RefreshCw,
-  Archive,
-  ArchiveRestore,
-  Layout
-} from 'lucide-react';
+import { Layout } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-
-// --- Type Definitions ---
-type ColumnType = 'text' | 'link' | 'date' | 'status' | 'category';
-
-interface Column {
-  id: string;
-  title: string;
-  type: ColumnType;
-}
-
-interface Row {
-  id: string;
-  archived?: boolean;
-  [key: string]: string | boolean | undefined;
-}
-
-interface EditingCell {
-  rowId: string;
-  colId: string;
-}
-
-interface SortConfig {
-  columnId: string;
-  direction: 'asc' | 'desc';
-}
-
-interface ConfirmDialog {
-  isOpen: boolean;
-  title: string;
-  message: string;
-  onConfirm: () => void;
-}
-
-type StatusOption = 'Watchlisted' | 'Active' | 'Submitted' | 'Canceled' | 'Bookmarked';
-type CategoryOption = 'Project' | 'Contest';
+import type { 
+  Column, 
+  Row, 
+  EditingCell, 
+  SortConfig, 
+  ConfirmDialogState, 
+} from '../components/table/types';
+import { TableToolbar } from '../components/table/TableToolbar';
+import { QuickFilters } from '../components/table/QuickFilters';
+import { TableHeader } from '../components/table/TableHeader';
+import { TableRow } from '../components/table/TableRow';
+import { ConfirmDialog } from '../components/table/ConfirmDialog';
 
 // --- Mock Data / Initial State ---
 const INITIAL_COLUMNS: Column[] = [
@@ -65,9 +25,6 @@ const INITIAL_COLUMNS: Column[] = [
   { id: 'col_converted', title: 'Converted', type: 'text' },
   { id: 'col_5', title: 'Status', type: 'status' },
 ];
-
-const STATUS_OPTIONS: StatusOption[] = ['Watchlisted', 'Active', 'Submitted', 'Canceled', 'Bookmarked'];
-const CATEGORY_OPTIONS: CategoryOption[] = ['Project', 'Contest'];
 
 interface TableProps {
   darkMode: boolean;
@@ -83,8 +40,7 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
   
   // UI States
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
-  const [editingHeader, setEditingHeader] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
     isOpen: false,
     title: '',
     message: '',
@@ -98,7 +54,7 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
   const [showArchived, setShowArchived] = useState<boolean>(false);
   
   // Currency Conversion State
-  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
   const [isRateLoading, setIsRateLoading] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -144,7 +100,7 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
             if (!newColumns.find(c => c.id === key)) {
               newColumns.push({
                 id: key,
-                title: key.replace('col_', 'Column '), // Simple title generation
+                title: key.replace('col_', 'Column '),
                 type: 'text'
               });
             }
@@ -169,7 +125,7 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
       try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
         const data = await response.json();
-        setExchangeRate(data.rates.IDR);
+        setExchangeRates(data.rates);
       } catch (error) {
         console.error('Failed to fetch exchange rate:', error);
       } finally {
@@ -179,6 +135,33 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
 
     fetchExchangeRate();
   }, []);
+
+  // --- Helpers: Currency Conversion ---
+  const detectCurrency = (value: string): string => {
+    const upper = value.toUpperCase();
+    if (upper.includes('AUD')) return 'AUD';
+    if (upper.includes('INR') || value.includes('₹')) return 'INR';
+    if (upper.includes('GBP') || value.includes('£')) return 'GBP';
+    if (upper.includes('EUR') || value.includes('€')) return 'EUR';
+    if (upper.includes('CAD') || (value.includes('C$') && !upper.includes('USD'))) return 'CAD';
+    return 'USD'; // Default
+  };
+
+  const calculateConversion = (value: string, rates: Record<string, number> | null): string => {
+    if (!rates) return '';
+    const numericValue = parseFloat(value.replace(/[^0-9.]/g, ''));
+    if (isNaN(numericValue)) return '';
+
+    const currency = detectCurrency(value);
+    const rateIDR = rates['IDR'];
+    const rateSource = rates[currency];
+
+    if (!rateIDR || !rateSource) return '';
+
+    // Convert to USD first (amount / rateSource), then to IDR
+    const convertedValue = Math.floor((numericValue / rateSource) * rateIDR);
+    return `Rp ${convertedValue.toLocaleString('id-ID')}`;
+  };
 
   // --- Handlers: Rows ---
   const addRow = async (): Promise<void> => {
@@ -288,11 +271,10 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
         const prizeCol = columns.find(c => c.title === 'Prize');
         const convertedCol = columns.find(c => c.title === 'Converted');
         
-        if (prizeCol && convertedCol && colId === prizeCol.id && exchangeRate) {
-          const prizeValue = parseFloat(value.replace(/[^0-9.]/g, ''));
-          if (!isNaN(prizeValue)) {
-            const convertedValue = Math.floor(prizeValue * exchangeRate);
-            updatedRow[convertedCol.id] = `Rp ${convertedValue.toLocaleString('id-ID')}`;
+        if (prizeCol && convertedCol && colId === prizeCol.id && exchangeRates) {
+          const converted = calculateConversion(value, exchangeRates);
+          if (converted) {
+            updatedRow[convertedCol.id] = converted;
           }
         }
         
@@ -320,8 +302,6 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
         // Don't update DB for converted value, it's derived
         return; 
       } else {
-        // It's a dynamic column, update metadata
-        // We need to get the current metadata from the row (excluding core fields)
         const currentMetadata: any = { ...row };
         delete currentMetadata.id;
         delete currentMetadata.col_1;
@@ -345,13 +325,11 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
 
     } catch (error) {
       console.error('Error updating cell:', error);
-      // Ideally revert optimistic update here, but for simplicity we just alert
-      // In a real app, we'd refetch or revert
     }
   };
 
   const recalculateConversions = () => {
-    if (!exchangeRate) return;
+    if (!exchangeRates) return;
     
     const prizeCol = columns.find(c => c.title === 'Prize');
     const convertedCol = columns.find(c => c.title === 'Converted');
@@ -359,17 +337,40 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
     if (!prizeCol || !convertedCol) return;
 
     const updatedRows = rows.map(row => {
-      const prizeValue = parseFloat(String(row[prizeCol.id] || '').replace(/[^0-9.]/g, ''));
-      if (!isNaN(prizeValue)) {
-        const convertedValue = Math.floor(prizeValue * exchangeRate);
-        const formattedConverted = `Rp ${convertedValue.toLocaleString('id-ID')}`;
-        return { ...row, [convertedCol.id]: formattedConverted };
+      const prizeValue = String(row[prizeCol.id] || '');
+      const converted = calculateConversion(prizeValue, exchangeRates);
+      if (converted) {
+        return { ...row, [convertedCol.id]: converted };
       }
       return row;
     });
 
     setRows(updatedRows);
   };
+
+  // Automatically recalculate conversions when data or rate becomes available
+  useEffect(() => {
+    if (!exchangeRates || rows.length === 0) return;
+
+    const prizeCol = columns.find(c => c.title === 'Prize');
+    const convertedCol = columns.find(c => c.title === 'Converted');
+    
+    if (!prizeCol || !convertedCol) return;
+
+    // Check if we have any rows that have a Prize but are missing Converted value
+    const hasMissingConversions = rows.some(row => {
+      const prizeStr = String(row[prizeCol.id] || '');
+      // Check if prize has content (at least one digit)
+      const hasPrize = /[0-9]/.test(prizeStr);
+      const isMissingConverted = !row[convertedCol.id];
+      return hasPrize && isMissingConverted;
+    });
+
+    if (hasMissingConversions) {
+      recalculateConversions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exchangeRates, rows, columns]);
 
   // --- Handlers: Columns ---
   const addColumn = (): void => {
@@ -396,7 +397,6 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
 
   const updateHeader = (colId: string, newTitle: string): void => {
     setColumns(columns.map(c => c.id === colId ? { ...c, title: newTitle } : c));
-    setEditingHeader(null);
   };
 
   // --- Handlers: Sorting & Filtering ---
@@ -417,7 +417,7 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
     }));
   };
 
-    const getFilteredAndSortedRows = (): Row[] => {
+  const getFilteredAndSortedRows = (): Row[] => {
     let filteredRows = [...rows];
     
     // Filter by Archive Status
@@ -445,18 +445,15 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
           const aValue = String(a[sortConfig.columnId] || '');
           const bValue = String(b[sortConfig.columnId] || '');
           
-          // Sort based on column type
           if (column.type === 'date') {
             const aDate = new Date(aValue).getTime();
             const bDate = new Date(bValue).getTime();
             return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate;
           } else if (column.type === 'text' && (String(aValue).match(/^\$?[\d,]+\.?\d*$/) || String(bValue).match(/^\$?[\d,]+\.?\d*$/))) {
-            // Handle numeric values (including currency)
-            const aNum = parseFloat(String(aValue).replace(/[$,]/g, '')) || 0;
-            const bNum = parseFloat(String(bValue).replace(/[$,]/g, '')) || 0;
+            const aNum = parseFloat(String(aValue).replace(/[$,Rp\s]/g, '')) || 0;
+            const bNum = parseFloat(String(bValue).replace(/[$,Rp\s]/g, '')) || 0;
             return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
           } else {
-            // Text sorting
             return sortConfig.direction === 'asc' 
               ? aValue.localeCompare(bValue)
               : bValue.localeCompare(aValue);
@@ -492,7 +489,6 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
   const handleQuickFilter = (type: 'category' | 'status', value: string): void => {
     const column = columns.find(c => c.type === type);
     if (column) {
-      // If clicking the currently active filter, clear it (toggle behavior)
       if (filters[column.id] === value) {
         const newFilters = { ...filters };
         delete newFilters[column.id];
@@ -534,30 +530,7 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
     };
     
     reader.readAsText(file);
-    // Reset input value to allow uploading the same file again
     event.target.value = '';
-  };
-
-  // --- Render Helpers ---
-  const getStatusColor = (status?: string): string => {
-    const base = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border";
-    switch (status?.toLowerCase()) {
-      case 'active': return `${base} bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20`;
-      case 'submitted': return `${base} bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20`;
-      case 'canceled': return `${base} bg-zinc-50 text-zinc-700 border-zinc-200 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-700/50`;
-      case 'bookmarked': return `${base} bg-violet-50 text-violet-700 border-violet-100 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20`;
-      case 'watchlisted': return `${base} bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20`;
-      default: return `${base} bg-zinc-50 text-zinc-700 border-zinc-200 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-700/50`;
-    }
-  };
-
-  const getCategoryColor = (category?: string): string => {
-    const base = "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium";
-    switch (category?.toLowerCase()) {
-      case 'project': return `${base} bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400`;
-      case 'contest': return `${base} bg-pink-50 text-pink-700 dark:bg-pink-500/10 dark:text-pink-400`;
-      default: return `${base} bg-zinc-50 text-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-400`;
-    }
   };
 
   return (
@@ -575,243 +548,45 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
           className="hidden"
         />
         
-        {/* Toolbar */}
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className={`text-2xl font-bold tracking-tight ${darkMode ? 'text-zinc-500' : 'text-zinc-900'}`}>
-              {showArchived ? 'Archived Projects' : 'Projects'}
-            </h2>
-            <p className={`text-sm mt-1 ${darkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
-              {showArchived ? 'View and restore previously archived entries' : 'Manage your active contracts and deliverables'}
-            </p>
-            {exchangeRate !== null && (
-              <div className="mt-2 flex items-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-full w-fit">
-                <span>1 USD ≈ Rp {exchangeRate.toLocaleString('id-ID')}</span>
-                <button 
-                  onClick={recalculateConversions}
-                  className="hover:text-emerald-700 dark:hover:text-emerald-300 ml-1 p-0.5 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
-                  title="Recalculate all conversions"
-                >
-                  <RefreshCw size={10} className={isRateLoading ? 'animate-spin' : ''} />
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-             <button 
-              onClick={() => setShowArchived(!showArchived)}
-              className={`p-2.5 rounded-full transition-all duration-200 cursor-pointer ${showArchived ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-500'}`}
-              title={showArchived ? "Show Active Projects" : "Show Archived Projects"}
-            >
-              {showArchived ? <ArchiveRestore size={18} /> : <Archive size={18} />}
-            </button>
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-500 bg-zinc-900/50' : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-600'}`}
-              title={showFilters ? "Hide Filters" : "Show Filters"}
-            >
-              {showFilters ? <FilterX size={16} /> : <Filter size={16} />}
-              <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Show'} Filters</span>
-            </button>
-            <div className={`h-6 w-px mx-1 ${darkMode ? 'bg-zinc-800' : 'bg-zinc-200'}`}></div>
-            <button 
-              onClick={downloadJSON}
-              className={`p-2 text-sm font-medium rounded-full border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-500 bg-zinc-900/50' : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-600'}`}
-              title="Download JSON"
-            >
-              <Download size={18} />
-            </button>
-            <button 
-              onClick={uploadJSON}
-              className={`p-2 text-sm font-medium rounded-full border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-500 bg-zinc-900/50' : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-600'}`}
-              title="Upload JSON"
-            >
-              <Upload size={18} />
-            </button>
-            <button 
-              onClick={addColumn}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-500 bg-zinc-900/50' : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-600'}`}
-            >
-              <Type size={16} />
-              <span className="hidden sm:inline">Add Column</span>
-            </button>
-            <button 
-              onClick={addRow}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-full bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/20 active:scale-95 transition-all duration-200 cursor-pointer ml-1"
-            >
-              <Plus size={18} strokeWidth={2.5} />
-              New Entry
-            </button>
-          </div>
-        </div>
+        <TableToolbar 
+          showArchived={showArchived}
+          showFilters={showFilters}
+          darkMode={darkMode}
+          exchangeRates={exchangeRates}
+          isRateLoading={isRateLoading}
+          onToggleArchived={() => setShowArchived(!showArchived)}
+          onToggleFilters={() => setShowFilters(!showFilters)}
+          onRecalculate={recalculateConversions}
+          onDownload={downloadJSON}
+          onUpload={uploadJSON}
+          onAddColumn={addColumn}
+          onAddRow={addRow}
+        />
 
-        {/* Quick Filters */}
-        <div className="mb-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`text-xs font-semibold uppercase tracking-wider mr-2 ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
-              Quick Filters:
-            </span>
-            
-            {/* Category Filters */}
-            {CATEGORY_OPTIONS.map(cat => {
-              const catCol = columns.find(c => c.type === 'category');
-              const isActive = catCol && filters[catCol.id] === cat;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => handleQuickFilter('category', cat)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-zinc-900 text-zinc-500 border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100' 
-                      : `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-700 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-
-            <div className={`w-px h-4 mx-2 ${darkMode ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-
-            {/* Status Filters */}
-            {STATUS_OPTIONS.map(status => {
-              const statusCol = columns.find(c => c.type === 'status');
-              const isActive = statusCol && filters[statusCol.id] === status;
-              
-              // Get color styles for active state
-              let activeStyle = '';
-              if (isActive) {
-                switch (status.toLowerCase()) {
-                  case 'active': activeStyle = 'bg-blue-600 text-white border-blue-600'; break;
-                  case 'submitted': activeStyle = 'bg-emerald-600 text-white border-emerald-600'; break;
-                  case 'canceled': activeStyle = 'bg-zinc-600 text-white border-zinc-600'; break;
-                  case 'bookmarked': activeStyle = 'bg-violet-600 text-white border-violet-600'; break;
-                  case 'watchlisted': activeStyle = 'bg-amber-600 text-white border-amber-600'; break;
-                  default: activeStyle = 'bg-zinc-900 text-white border-zinc-900';
-                }
-              }
-
-              return (
-                <button
-                  key={status}
-                  onClick={() => handleQuickFilter('status', status)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 ${
-                    isActive 
-                      ? activeStyle
-                      : `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-700 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
-                  }`}
-                >
-                  {status}
-                </button>
-              );
-            })}
-
-            <div className={`w-px h-4 mx-2 ${darkMode ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-
-            {/* Reset */}
-            <button
-              onClick={clearAllFilters}
-              disabled={Object.keys(filters).length === 0}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 flex items-center gap-1.5 ${
-                Object.keys(filters).length === 0
-                  ? `opacity-50 cursor-not-allowed ${darkMode ? 'border-zinc-800 text-zinc-600' : 'border-zinc-100 text-zinc-500'}`
-                  : `hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:border-rose-200 dark:hover:border-rose-800 hover:text-rose-600 dark:hover:text-rose-400 ${darkMode ? 'border-zinc-700 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
-              }`}
-            >
-              <FilterX size={12} />
-              Reset
-            </button>
-          </div>
-        </div>
+        <QuickFilters 
+          columns={columns}
+          filters={filters}
+          darkMode={darkMode}
+          onQuickFilter={handleQuickFilter}
+          onClearFilters={clearAllFilters}
+        />
 
         {/* Table Container */}
         <div className={`rounded-2xl border overflow-hidden transition-all duration-300 ${darkMode ? 'border-zinc-800 bg-zinc-900/30 shadow-inner shadow-black/20' : 'border-zinc-200 bg-white shadow-xl shadow-zinc-200/50'}`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm table-fixed">
               
-              {/* Table Header */}
-              <thead>
-                {/* Header Row with Titles and Sort */}
-                <tr className={`h-12 border-b text-xs font-semibold tracking-wider uppercase ${darkMode ? 'border-zinc-800 bg-zinc-900/50 text-zinc-400' : 'border-zinc-100 bg-zinc-50/80 text-zinc-500'}`}>
-                  {columns.map((col) => {
-                    // Determine column width based on ID
-                    let widthClass = 'w-[150px]'; // Default
-                    if (col.id === 'col_1') widthClass = 'w-[300px]'; // Project Name (Wider)
-                    else if (col.id === 'col_cat') widthClass = 'w-[120px]'; // Category (Narrower)
-                    else if (col.id === 'col_2') widthClass = 'w-[100px]'; // Link (Narrower)
-                    else if (col.id === 'col_3') widthClass = 'w-[250px]'; // Deadline (Fixed width, sufficient for date)
-                    
-                    return (
-                    <th key={col.id} className={`px-6 py-3 group first:pl-8 ${widthClass}`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-1">
-                          {editingHeader === col.id ? (
-                            <div className="flex items-center gap-1 w-full">
-                              <input 
-                                autoFocus
-                                type="text" 
-                                defaultValue={col.title}
-                                onBlur={(e) => updateHeader(col.id, e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && updateHeader(col.id, e.currentTarget.value)}
-                                className={`w-full px-2 py-1 rounded-md border-b-2 outline-none bg-transparent transition-all ${darkMode ? 'border-blue-500 text-zinc-500' : 'border-blue-500 text-zinc-900'}`}
-                              />
-                            </div>
-                          ) : (
-                            <>
-                              <span 
-                                onClick={() => setEditingHeader(col.id)}
-                                className="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                              >
-                                {col.title}
-                              </span>
-                              <button
-                                onClick={() => handleSort(col.id)}
-                                className="text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
-                                title="Sort column"
-                              >
-                                {sortConfig?.columnId === col.id ? (
-                                  sortConfig.direction === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
-                                ) : (
-                                  <ArrowUpDown size={14} />
-                                )}
-                              </button>
-                            </>
-                          )}
-                        </div>
-                        <button 
-                          onClick={() => deleteColumn(col.id)}
-                          className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-500 transition-all duration-200 cursor-pointer"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    </th>
-                  );
-                })}
-                  <th className="px-6 py-3 w-[100px] text-center">Actions</th>
-                </tr>
-                
-                {/* Filter Row */}
-                {showFilters && (
-                  <tr className={`border-b ${darkMode ? 'border-zinc-800 bg-zinc-900/30' : 'border-zinc-100 bg-zinc-50/30'}`}>
-                    {columns.map((col) => (
-                      <th key={`filter-${col.id}`} className="px-6 py-2 first:pl-8">
-                        <div className="flex items-center gap-2">
-                          <Filter size={12} className="text-zinc-400" />
-                          <input
-                            type="text"
-                            placeholder="Filter..."
-                            value={filters[col.id] || ''}
-                            onChange={(e) => handleFilterChange(col.id, e.target.value)}
-                            className={`w-full px-2 py-1 text-xs rounded-md bg-transparent outline-none transition-all placeholder-zinc-400 ${darkMode ? 'text-zinc-200' : 'text-zinc-700'}`}
-                          />
-                        </div>
-                      </th>
-                    ))}
-                    <th className="px-6 py-2"></th>
-                  </tr>
-                )}
-              </thead>
+              <TableHeader 
+                columns={columns}
+                filters={filters}
+                sortConfig={sortConfig}
+                showFilters={showFilters}
+                darkMode={darkMode}
+                onSort={handleSort}
+                onUpdateHeader={updateHeader}
+                onDeleteColumn={deleteColumn}
+                onFilterChange={handleFilterChange}
+              />
 
               {/* Table Body */}
               <tbody className={`divide-y ${darkMode ? 'divide-zinc-800' : 'divide-zinc-100'}`}>
@@ -843,109 +618,19 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
                     </tr>
                   ) : (
                     displayRows.map((row) => (
-                    <tr key={row.id} className={`group transition-all duration-200 h-16 ${darkMode ? 'hover:bg-zinc-800/30' : 'hover:bg-blue-50/30'}`}>
-                      {columns.map((col) => (
-                        <td key={`${row.id}-${col.id}`} className="px-6 h-16 first:pl-8">
-                          {/* EDIT MODE */}
-                          {editingCell?.rowId === row.id && editingCell?.colId === col.id ? (
-                            col.type === 'status' ? (
-                              <div className="flex items-center h-full">
-                                <select 
-                                  autoFocus
-                                  defaultValue={String(row[col.id] || '')}
-                                  onChange={(e) => updateCell(row.id, col.id, e.target.value)}
-                                  onBlur={(e) => updateCell(row.id, col.id, e.target.value)}
-                                  className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-900'}`}
-                                >
-                                  {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
-                              </div>
-                            ) : col.type === 'category' ? (
-                              <div className="flex items-center h-full">
-                                <select 
-                                  autoFocus
-                                  defaultValue={String(row[col.id] || '')}
-                                  onChange={(e) => updateCell(row.id, col.id, e.target.value)}
-                                  onBlur={(e) => updateCell(row.id, col.id, e.target.value)}
-                                  className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-900'}`}
-                                >
-                                  {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
-                              </div>
-                            ) : (
-                              <div className="flex items-center h-full">
-                                <input 
-                                  autoFocus
-                                  type={col.type === 'date' ? 'date' : 'text'} 
-                                  defaultValue={String(row[col.id] || '')}
-                                  onBlur={(e) => updateCell(row.id, col.id, e.target.value)}
-                                  onKeyDown={(e) => e.key === 'Enter' && updateCell(row.id, col.id, e.currentTarget.value)}
-                                  className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-900'}`}
-                                />
-                              </div>
-                            )
-                          ) : (
-                            /* VIEW MODE */
-                            <div 
-                              onClick={() => setEditingCell({ rowId: row.id, colId: col.id })}
-                              className="cursor-pointer h-full flex items-center"
-                            >
-                              {col.type === 'link' && row[col.id] ? (
-                                <a 
-                                  href={String(row[col.id] || '#')} 
-                                  target="_blank" 
-                                  rel="noreferrer"
-                                  onClick={(e) => e.stopPropagation()} 
-                                  className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors font-medium text-sm hover:underline underline-offset-4"
-                                >
-                                  Link <ExternalLink size={12} />
-                                </a>
-                              ) : col.type === 'status' ? (
-                                <span className={getStatusColor(String(row[col.id] || ''))}>
-                                  <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                                    String(row[col.id] || '')?.toLowerCase() === 'active' ? 'bg-blue-500' :
-                                    String(row[col.id] || '')?.toLowerCase() === 'submitted' ? 'bg-emerald-500' :
-                                    String(row[col.id] || '')?.toLowerCase() === 'canceled' ? 'bg-zinc-500' :
-                                    String(row[col.id] || '')?.toLowerCase() === 'bookmarked' ? 'bg-violet-500' :
-                                    String(row[col.id] || '')?.toLowerCase() === 'watchlisted' ? 'bg-amber-500' :
-                                    'bg-zinc-400'
-                                  }`}></span>
-                                  {row[col.id] || 'Watchlisted'}
-                                </span>
-                              ) : col.type === 'category' ? (
-                                <span className={getCategoryColor(String(row[col.id] || ''))}>
-                                  {row[col.id] || 'Project'}
-                                </span>
-                              ) : (
-                                <span className={!row[col.id] ? 'text-zinc-500 dark:text-zinc-700 text-sm italic' : 'text-zinc-700 dark:text-zinc-500 font-medium'}>
-                                  {row[col.id] || 'Empty'}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                      ))}
-                      
-                      {/* Row Actions */}
-                      <td className="px-6 py-3.5 text-center">
-                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <button 
-                            onClick={() => toggleRowArchive(row.id)}
-                            className={`p-2 rounded-full transition-all duration-200 cursor-pointer ${showArchived ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' : 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}
-                            title={showArchived ? "Restore Entry" : "Archive Entry"}
-                          >
-                            {showArchived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
-                          </button>
-                          <button 
-                            onClick={() => deleteRow(row.id)}
-                            className="text-zinc-400 hover:text-rose-500 transition-all duration-200 p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20 cursor-pointer"
-                            title="Delete Entry"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                      <TableRow 
+                        key={row.id}
+                        row={row}
+                        columns={columns}
+                        editingCell={editingCell}
+                        showArchived={showArchived}
+                        darkMode={darkMode}
+                        onUpdateCell={updateCell}
+                        onEditStart={(rowId, colId) => setEditingCell({ rowId, colId })}
+                        onEditEnd={() => setEditingCell(null)}
+                        onArchive={toggleRowArchive}
+                        onDelete={deleteRow}
+                      />
                     ))
                   );
                 })()}
@@ -959,45 +644,13 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
             <span className={darkMode ? 'text-zinc-600' : 'text-zinc-400'}>Last Updated: {new Date().toLocaleDateString()}</span>
           </div>
         </div>
-
       </main>
 
-      {/* Confirmation Modal */}
-      {confirmDialog.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-sm transition-all duration-300">
-          <div className={`max-w-md w-full rounded-2xl shadow-2xl border transform transition-all scale-100 ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-100'}`}>
-            {/* Modal Header */}
-            <div className="px-6 pt-6 pb-2">
-              <h3 className={`text-lg font-bold ${darkMode ? 'text-zinc-500' : 'text-zinc-900'}`}>
-                {confirmDialog.title}
-              </h3>
-            </div>
-            
-            {/* Modal Body */}
-            <div className="px-6 py-2">
-              <p className={`text-sm leading-relaxed ${darkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                {confirmDialog.message}
-              </p>
-            </div>
-            
-            {/* Modal Footer */}
-            <div className="px-6 py-6 flex justify-end gap-3">
-              <button
-                onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
-                className={`px-4 py-2 text-sm font-medium rounded-xl border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-500' : 'border-zinc-200 hover:bg-zinc-50 text-zinc-600'}`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDialog.onConfirm}
-                className="px-4 py-2 text-sm font-medium rounded-xl bg-rose-600 text-white hover:bg-rose-700 hover:shadow-lg hover:shadow-rose-600/20 active:scale-95 transition-all duration-200 cursor-pointer"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog 
+        dialog={confirmDialog}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        darkMode={darkMode}
+      />
     </div>
   );
 }
