@@ -15,7 +15,9 @@ import {
   ArrowDown,
   Filter,
   FilterX,
-  RefreshCw
+  RefreshCw,
+  Archive,
+  ArchiveRestore
 } from 'lucide-react';
 
 // --- Type Definitions ---
@@ -29,7 +31,8 @@ interface Column {
 
 interface Row {
   id: string;
-  [key: string]: string;
+  archived?: boolean;
+  [key: string]: string | boolean | undefined;
 }
 
 interface EditingCell {
@@ -103,6 +106,7 @@ export default function App(): React.JSX.Element {
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [showArchived, setShowArchived] = useState<boolean>(false);
   
   // Confirm Dialog State
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
@@ -228,6 +232,15 @@ export default function App(): React.JSX.Element {
     });
   };
 
+  const toggleRowArchive = (rowId: string): void => {
+    setRows(rows.map(r => {
+      if (r.id === rowId) {
+        return { ...r, archived: !r.archived };
+      }
+      return r;
+    }));
+  };
+
   const updateCell = (rowId: string, colId: string, value: string): void => {
     let updatedRows = rows.map(r => r.id === rowId ? { ...r, [colId]: value } : r);
     
@@ -258,7 +271,7 @@ export default function App(): React.JSX.Element {
     if (!prizeCol || !convertedCol) return;
 
     const updatedRows = rows.map(row => {
-      const prizeValue = parseFloat((row[prizeCol.id] || '').replace(/[^0-9.]/g, ''));
+      const prizeValue = parseFloat(String(row[prizeCol.id] || '').replace(/[^0-9.]/g, ''));
       if (!isNaN(prizeValue)) {
         const convertedValue = Math.floor(prizeValue * exchangeRate);
         const formattedConverted = `Rp ${convertedValue.toLocaleString('id-ID')}`;
@@ -316,15 +329,21 @@ export default function App(): React.JSX.Element {
     }));
   };
 
-  const getFilteredAndSortedRows = (): Row[] => {
+    const getFilteredAndSortedRows = (): Row[] => {
     let filteredRows = [...rows];
+    
+    // Filter by Archive Status
+    filteredRows = filteredRows.filter(row => {
+      const isArchived = !!row.archived;
+      return showArchived ? isArchived : !isArchived;
+    });
     
     // Apply filters
     Object.keys(filters).forEach(columnId => {
       const filterValue = filters[columnId].toLowerCase();
       if (filterValue) {
         filteredRows = filteredRows.filter(row => {
-          const cellValue = (row[columnId] || '').toLowerCase();
+          const cellValue = String(row[columnId] || '').toLowerCase();
           return cellValue.includes(filterValue);
         });
       }
@@ -335,18 +354,18 @@ export default function App(): React.JSX.Element {
       const column = columns.find(c => c.id === sortConfig.columnId);
       if (column) {
         filteredRows.sort((a, b) => {
-          const aValue = a[sortConfig.columnId] || '';
-          const bValue = b[sortConfig.columnId] || '';
+          const aValue = String(a[sortConfig.columnId] || '');
+          const bValue = String(b[sortConfig.columnId] || '');
           
           // Sort based on column type
           if (column.type === 'date') {
             const aDate = new Date(aValue).getTime();
             const bDate = new Date(bValue).getTime();
             return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate;
-          } else if (column.type === 'text' && (aValue.match(/^\$?[\d,]+\.?\d*$/) || bValue.match(/^\$?[\d,]+\.?\d*$/))) {
+          } else if (column.type === 'text' && (String(aValue).match(/^\$?[\d,]+\.?\d*$/) || String(bValue).match(/^\$?[\d,]+\.?\d*$/))) {
             // Handle numeric values (including currency)
-            const aNum = parseFloat(aValue.replace(/[$,]/g, '')) || 0;
-            const bNum = parseFloat(bValue.replace(/[$,]/g, '')) || 0;
+            const aNum = parseFloat(String(aValue).replace(/[$,]/g, '')) || 0;
+            const bNum = parseFloat(String(bValue).replace(/[$,]/g, '')) || 0;
             return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
           } else {
             // Text sorting
@@ -470,6 +489,13 @@ export default function App(): React.JSX.Element {
           
           <div className="flex items-center gap-4">
             <button 
+              onClick={() => setShowArchived(!showArchived)}
+              className={`p-2.5 rounded-full transition-all duration-200 cursor-pointer ${showArchived ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100'}`}
+              title={showArchived ? "Show Active Projects" : "Show Archived Projects"}
+            >
+              {showArchived ? <ArchiveRestore size={18} /> : <Archive size={18} />}
+            </button>
+            <button 
               onClick={() => setDarkMode(!darkMode)}
               className={`p-2.5 rounded-full transition-all duration-200 cursor-pointer ${darkMode ? 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100' : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900'}`}
             >
@@ -495,10 +521,10 @@ export default function App(): React.JSX.Element {
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className={`text-2xl font-bold tracking-tight ${darkMode ? 'text-zinc-100' : 'text-zinc-900'}`}>
-              Projects
+              {showArchived ? 'Archived Projects' : 'Projects'}
             </h2>
             <p className={`text-sm mt-1 ${darkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
-              Manage your active contracts and deliverables
+              {showArchived ? 'View and restore previously archived entries' : 'Manage your active contracts and deliverables'}
             </p>
             {exchangeRate && (
               <div className="mt-2 flex items-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-full w-fit">
@@ -741,7 +767,7 @@ export default function App(): React.JSX.Element {
                               <div className="flex items-center h-full">
                                 <select 
                                   autoFocus
-                                  defaultValue={row[col.id]}
+                                  defaultValue={String(row[col.id] || '')}
                                   onChange={(e) => updateCell(row.id, col.id, e.target.value)}
                                   onBlur={(e) => updateCell(row.id, col.id, e.target.value)}
                                   className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'}`}
@@ -753,7 +779,7 @@ export default function App(): React.JSX.Element {
                               <div className="flex items-center h-full">
                                 <select 
                                   autoFocus
-                                  defaultValue={row[col.id]}
+                                  defaultValue={String(row[col.id] || '')}
                                   onChange={(e) => updateCell(row.id, col.id, e.target.value)}
                                   onBlur={(e) => updateCell(row.id, col.id, e.target.value)}
                                   className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'}`}
@@ -766,7 +792,7 @@ export default function App(): React.JSX.Element {
                                 <input 
                                   autoFocus
                                   type={col.type === 'date' ? 'date' : 'text'} 
-                                  defaultValue={row[col.id]}
+                                  defaultValue={String(row[col.id] || '')}
                                   onBlur={(e) => updateCell(row.id, col.id, e.target.value)}
                                   onKeyDown={(e) => e.key === 'Enter' && updateCell(row.id, col.id, e.currentTarget.value)}
                                   className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'}`}
@@ -781,7 +807,7 @@ export default function App(): React.JSX.Element {
                             >
                               {col.type === 'link' && row[col.id] ? (
                                 <a 
-                                  href={row[col.id]} 
+                                  href={String(row[col.id] || '#')} 
                                   target="_blank" 
                                   rel="noreferrer"
                                   onClick={(e) => e.stopPropagation()} 
@@ -790,19 +816,19 @@ export default function App(): React.JSX.Element {
                                   Link <ExternalLink size={12} />
                                 </a>
                               ) : col.type === 'status' ? (
-                                <span className={getStatusColor(row[col.id])}>
+                                <span className={getStatusColor(String(row[col.id] || ''))}>
                                   <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                                    row[col.id]?.toLowerCase() === 'active' ? 'bg-blue-500' :
-                                    row[col.id]?.toLowerCase() === 'submitted' ? 'bg-emerald-500' :
-                                    row[col.id]?.toLowerCase() === 'canceled' ? 'bg-zinc-500' :
-                                    row[col.id]?.toLowerCase() === 'bookmarked' ? 'bg-violet-500' :
-                                    row[col.id]?.toLowerCase() === 'watchlisted' ? 'bg-amber-500' :
+                                    String(row[col.id] || '')?.toLowerCase() === 'active' ? 'bg-blue-500' :
+                                    String(row[col.id] || '')?.toLowerCase() === 'submitted' ? 'bg-emerald-500' :
+                                    String(row[col.id] || '')?.toLowerCase() === 'canceled' ? 'bg-zinc-500' :
+                                    String(row[col.id] || '')?.toLowerCase() === 'bookmarked' ? 'bg-violet-500' :
+                                    String(row[col.id] || '')?.toLowerCase() === 'watchlisted' ? 'bg-amber-500' :
                                     'bg-zinc-400'
                                   }`}></span>
                                   {row[col.id] || 'Watchlisted'}
                                 </span>
                               ) : col.type === 'category' ? (
-                                <span className={getCategoryColor(row[col.id])}>
+                                <span className={getCategoryColor(String(row[col.id] || ''))}>
                                   {row[col.id] || 'Project'}
                                 </span>
                               ) : (
@@ -817,13 +843,22 @@ export default function App(): React.JSX.Element {
                       
                       {/* Row Actions */}
                       <td className="px-6 py-3.5 text-center">
-                        <button 
-                          onClick={() => deleteRow(row.id)}
-                          className="text-zinc-400 hover:text-rose-500 transition-all duration-200 p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20 cursor-pointer opacity-0 group-hover:opacity-100"
-                          title="Delete Entry"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <button 
+                            onClick={() => toggleRowArchive(row.id)}
+                            className={`p-2 rounded-full transition-all duration-200 cursor-pointer ${showArchived ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' : 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}
+                            title={showArchived ? "Restore Entry" : "Archive Entry"}
+                          >
+                            {showArchived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
+                          </button>
+                          <button 
+                            onClick={() => deleteRow(row.id)}
+                            className="text-zinc-400 hover:text-rose-500 transition-all duration-200 p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20 cursor-pointer"
+                            title="Delete Entry"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     ))
