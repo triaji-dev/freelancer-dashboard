@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Layout, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { LoginForm } from '../components/auth/LoginForm';
+import { AlertCircle } from 'lucide-react';
+import imageLogin from '../assets/image02.png';
+import imageSignUp from '../assets/image04.png';
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
@@ -11,7 +14,7 @@ export default function Login() {
   const [message, setMessage] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const savedEmail = localStorage.getItem('rememberedEmail');
     if (savedEmail) {
       setEmail(savedEmail);
@@ -55,127 +58,61 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-4 font-sans text-zinc-900 dark:text-zinc-100">
-      <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-        <div className="p-8">
-          <div className="flex flex-col items-center mb-8">
-            <div className="p-3 rounded-xl bg-blue-600 text-white mb-4 shadow-lg shadow-blue-600/20">
-              <Layout size={32} strokeWidth={1.5} />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              {isSignUp ? 'Create an account' : 'Welcome back'}
-            </h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 text-center">
-              {isSignUp 
-                ? 'Enter your details to get started with Freelancer Dashboard' 
-                : 'Sign in to access your projects and contests'}
-            </p>
-          </div>
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden">
+      
+      {/* Left Side - Image */}
+      <div className="hidden lg:block w-1/2 relative bg-zinc-900 border-r-1 border-zinc-600">
+        <div className="absolute inset-0 z-10 bg-[radial-gradient(ellipse_at_center,_transparent_30%,_rgba(0,0,0,0.8)_100%)]" />
+        <img 
+          src={isSignUp ? imageSignUp : imageLogin} 
+          alt={isSignUp ? "Sign Up" : "Login"} 
+          className="w-full h-full object-cover transition-opacity duration-500 saturate-60"
+        />
+        <div className="absolute bottom-10 left-10 z-20 text-white max-w-lg">
+          <h2 className="text-3xl font-bold mb-4">
+            {isSignUp ? "Join our Community" : "Welcome Back"}
+          </h2>
+          <p className="text-lg text-zinc-200 leading-relaxed">
+            {isSignUp 
+              ? "Start your journey with us today and discover amazing opportunities." 
+              : "Access your dashboard to manage your projects and track your progress."}
+          </p>
+        </div>
+      </div>
 
-          <form onSubmit={handleAuth} className="space-y-4">
+      {/* Right Side - Form */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 lg:p-12 relative">
+        <div className="w-full max-w-md space-y-4">
+          
+          {/* Alert Messages */}
+          <div className="space-y-2">
             {error && (
-              <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-sm flex items-center gap-2">
+              <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-sm flex items-center gap-2 animate-in slide-in-from-top-2">
                 <AlertCircle size={16} />
                 {error}
               </div>
             )}
             
             {message && (
-              <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-2">
+              <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-2 animate-in slide-in-from-top-2">
                 <AlertCircle size={16} />
                 {message}
               </div>
             )}
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                <input
-                  type="email"
-                  name="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                  placeholder="name@example.com"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                <input
-                  type="password"
-                  name="password"
-                  autoComplete={isSignUp ? "new-password" : "current-password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-
-            {!isSignUp && (
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="peer sr-only"
-                    />
-                    <div className={`w-4 h-4 rounded border transition-colors ${rememberMe 
-                      ? 'bg-blue-600 border-blue-600' 
-                      : 'border-zinc-300 dark:border-zinc-700 bg-transparent'}`}
-                    >
-                      {rememberMe && (
-                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-sm text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-300 transition-colors">
-                    Remember me
-                  </span>
-                </label>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 focus:ring-4 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Please wait...
-                </>
-              ) : (
-                isSignUp ? 'Sign Up' : 'Sign In'
-              )}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-zinc-500">
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-              <button
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
-              >
-                {isSignUp ? 'Sign In' : 'Sign Up'}
-              </button>
-            </p>
           </div>
+
+          <LoginForm 
+            isSignUp={isSignUp}
+            isLoading={isLoading}
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+            rememberMe={rememberMe}
+            setRememberMe={setRememberMe}
+            onSubmit={handleAuth}
+            onToggleMode={() => setIsSignUp(!isSignUp)}
+          />
         </div>
       </div>
     </div>

@@ -54,46 +54,55 @@ export const TableCell: React.FC<TableCellProps> = ({
   const commonInputClasses = `w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-900'}`;
 
   if (isEditing) {
-    if (column.type === 'status') {
+    if (column.type === 'status' || column.type === 'category') {
+      const options = column.type === 'status' ? STATUS_OPTIONS : CATEGORY_OPTIONS;
+      
       return (
-        <div className="flex items-center h-full">
-          <select
-            ref={inputRef as React.RefObject<HTMLSelectElement>}
-            defaultValue={String(row[column.id] || '')}
-            onChange={(e) => {
-              onUpdate(e.target.value);
-              onEditEnd();
-            }}
-            onBlur={(e) => {
-              onUpdate(e.target.value);
-              onEditEnd();
-            }}
-            className={commonInputClasses}
-          >
-            {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-          </select>
-        </div>
-      );
-    }
-    
-    if (column.type === 'category') {
-      return (
-        <div className="flex items-center h-full">
-          <select
-            ref={inputRef as React.RefObject<HTMLSelectElement>}
-            defaultValue={String(row[column.id] || '')}
-            onChange={(e) => {
-              onUpdate(e.target.value);
-              onEditEnd();
-            }}
-            onBlur={(e) => {
-              onUpdate(e.target.value);
-              onEditEnd();
-            }}
-            className={commonInputClasses}
-          >
-            {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-          </select>
+        <div className="relative h-full flex items-center">
+            {/* 
+              We use a transparent overlay or rely on the container's onBlur to close.
+              Using tabindex to allow the div to receive focus/blur events.
+            */}
+            <button
+              autoFocus
+              className={commonInputClasses + " text-left cursor-default flex items-center justify-between"}
+              onBlur={(e) => {
+                  // Check if the new focus is within our dropdown (e.g. clicking an option)
+                  // If s, don't close yet (the option click handler will close it)
+                  // However, since options are children, onBlur bubbles or relatedTarget checks are needed.
+                  // A simpler way: use a timeout to allow click to process, or check relatedTarget.
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                      onEditEnd();
+                  }
+              }}
+            >
+              {String(row[column.id] || (column.type === 'status' ? 'Watchlisted' : 'Project'))}
+            </button>
+            
+            <div className={`absolute left-0 top-full mt-1 z-50 w-48 p-1 rounded-xl shadow-xl border overflow-hidden animate-in fade-in zoom-in-95 duration-100 ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'}`}>
+              <div className="flex flex-col gap-0.5">
+                {options.map((opt) => (
+                  <button
+                    key={opt}
+                    onMouseDown={(e) => {
+                        // Prevent the button from stealing focus which would trigger onBlur on the parent immediately
+                        e.preventDefault(); 
+                    }}
+                    onClick={() => {
+                      onUpdate(opt);
+                      onEditEnd();
+                    }}
+                    className={`px-3 py-2 text-sm text-left rounded-lg transition-colors ${
+                       String(row[column.id]) === opt 
+                        ? (darkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-700')
+                        : (darkMode ? 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900')
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
         </div>
       );
     }

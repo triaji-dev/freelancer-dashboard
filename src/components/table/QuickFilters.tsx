@@ -20,7 +20,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
 }) => {
   return (
     <div className="mb-6">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 mt-4">
         <span className={`text-xs font-semibold uppercase tracking-wider mr-2 ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
           Quick Filters:
         </span>
@@ -36,7 +36,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
               className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 ${
                 isActive 
                   ? 'bg-zinc-900 text-zinc-500 border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100' 
-                  : `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-700 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
+                  : `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-400 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
               }`}
             >
               {cat}
@@ -70,7 +70,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
               className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 ${
                 isActive 
                   ? activeStyle
-                  : `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-700 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
+                  : `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-400 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
               }`}
             >
               {status}
@@ -86,8 +86,8 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
           disabled={Object.keys(filters).length === 0}
           className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 flex items-center gap-1.5 ${
             Object.keys(filters).length === 0
-              ? `opacity-50 cursor-not-allowed ${darkMode ? 'border-zinc-800 text-zinc-600' : 'border-zinc-100 text-zinc-500'}`
-              : `hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:border-rose-200 dark:hover:border-rose-800 hover:text-rose-600 dark:hover:text-rose-400 ${darkMode ? 'border-zinc-700 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
+              ? `opacity-50 cursor-not-allowed ${darkMode ? 'border-zinc-400 text-zinc-400' : 'border-zinc-100 text-zinc-500'}`
+              : `hover:bg-rose-50 dark:hover:bg-rose-900/50 hover:border-rose-200 dark:hover:border-rose-800 hover:text-rose-600 dark:hover:text-rose-400 ${darkMode ? 'border-zinc-400 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
           }`}
         >
           <FilterX size={12} />

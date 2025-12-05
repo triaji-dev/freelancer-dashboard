@@ -14,11 +14,12 @@ import { QuickFilters } from '../components/table/QuickFilters';
 import { TableHeader } from '../components/table/TableHeader';
 import { TableRow } from '../components/table/TableRow';
 import { ConfirmDialog } from '../components/table/ConfirmDialog';
+import heroImage from '../assets/image00.png';
 
 // --- Mock Data / Initial State ---
 const INITIAL_COLUMNS: Column[] = [
   { id: 'col_1', title: 'Project Name', type: 'text' },
-  { id: 'col_cat', title: 'Category', type: 'category' },
+  { id: 'col_cat', title: 'Cat', type: 'category' },
   { id: 'col_2', title: 'Link', type: 'link' },
   { id: 'col_3', title: 'Deadline', type: 'date' },
   { id: 'col_4', title: 'Prize', type: 'text' },
@@ -449,6 +450,21 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
             const aDate = new Date(aValue).getTime();
             const bDate = new Date(bValue).getTime();
             return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate;
+          } else if (column.title === 'Prize' || column.title === 'Converted') {
+            // Sort by numerical value of the Converted column (IDR)
+            // fallback to 0 if valid number can't be parsed
+            const getNumericValue = (item: Row) => {
+              // Always try to use the Converted column for sorting value if available
+              // This normalizes different currencies (USD, EUR, etc) to IDR
+              const convertedVal = String(item['col_converted'] || '');
+              const cleanVal = convertedVal.replace(/[^0-9]/g, '');
+              return cleanVal ? parseInt(cleanVal, 10) : 0;
+            };
+
+            const aNum = getNumericValue(a);
+            const bNum = getNumericValue(b);
+            
+            return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
           } else if (column.type === 'text' && (String(aValue).match(/^\$?[\d,]+\.?\d*$/) || String(bValue).match(/^\$?[\d,]+\.?\d*$/))) {
             const aNum = parseFloat(String(aValue).replace(/[$,Rp\s]/g, '')) || 0;
             const bNum = parseFloat(String(bValue).replace(/[$,Rp\s]/g, '')) || 0;
@@ -548,28 +564,44 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
           className="hidden"
         />
         
-        <TableToolbar 
-          showArchived={showArchived}
-          showFilters={showFilters}
-          darkMode={darkMode}
-          exchangeRates={exchangeRates}
-          isRateLoading={isRateLoading}
-          onToggleArchived={() => setShowArchived(!showArchived)}
-          onToggleFilters={() => setShowFilters(!showFilters)}
-          onRecalculate={recalculateConversions}
-          onDownload={downloadJSON}
-          onUpload={uploadJSON}
-          onAddColumn={addColumn}
-          onAddRow={addRow}
-        />
 
-        <QuickFilters 
-          columns={columns}
-          filters={filters}
-          darkMode={darkMode}
-          onQuickFilter={handleQuickFilter}
-          onClearFilters={clearAllFilters}
-        />
+        {/* Table Controls (Toolbar + Filters) with Hero Background */}
+        <div className="relative overflow-hidden rounded-3xl mb-8 shadow-xl">
+          {/* Background Image & Overlay */}
+          <div className="absolute inset-0 z-0">
+            <img 
+              src={heroImage} 
+              alt="Dashboard Header" 
+              className="w-full h-full object-cover object-[50%_25%] transition-transform duration-700 hover:scale-105"
+            />
+            <div className={`absolute inset-0 transition-colors duration-300 ${darkMode ? 'bg-zinc-900/70' : 'bg-zinc-900/70'}`} />
+          </div>
+
+          <div className="relative z-10 p-6 sm:p-8">
+            <TableToolbar 
+              showArchived={showArchived}
+              showFilters={showFilters}
+              darkMode={true}
+              exchangeRates={exchangeRates}
+              isRateLoading={isRateLoading}
+              onToggleArchived={() => setShowArchived(!showArchived)}
+              onToggleFilters={() => setShowFilters(!showFilters)}
+              onRecalculate={recalculateConversions}
+              onDownload={downloadJSON}
+              onUpload={uploadJSON}
+              onAddColumn={addColumn}
+              onAddRow={addRow}
+            />
+
+            <QuickFilters 
+              columns={columns}
+              filters={filters}
+              darkMode={true}
+              onQuickFilter={handleQuickFilter}
+              onClearFilters={clearAllFilters}
+            />
+          </div>
+        </div>
 
         {/* Table Container */}
         <div className={`rounded-2xl border overflow-hidden transition-all duration-300 ${darkMode ? 'border-zinc-800 bg-zinc-900/30 shadow-inner shadow-black/20' : 'border-zinc-200 bg-white shadow-xl shadow-zinc-200/50'}`}>

@@ -1,20 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Table from './sections/Table';
 import { Moon, Sun, Layout, LogOut } from 'lucide-react';
 
-function Dashboard() {
+interface DashboardProps {
+  darkMode: boolean;
+  toggleDarkMode: () => void;
+}
+
+function Dashboard({ darkMode, toggleDarkMode }: DashboardProps) {
   const { signOut, user } = useAuth();
-  // --- State ---
-  const [darkMode, setDarkMode] = useState<boolean>(false);
-
-  // Toggle Dark Mode
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle('dark');
-  };
-
+  
   return (
     <div className={`min-h-screen transition-colors duration-300 font-sans ${darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
       
@@ -62,6 +59,28 @@ function Dashboard() {
 function AppContent() {
   const { session, loading } = useAuth();
 
+  // --- Theme State (Global) ---
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  // Sync Dark Mode with DOM
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  // Toggle Dark Mode
+  const toggleDarkMode = () => {
+    setDarkMode(prev => !prev);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
@@ -74,7 +93,7 @@ function AppContent() {
     return <Login />;
   }
 
-  return <Dashboard />;
+  return <Dashboard darkMode={darkMode} toggleDarkMode={toggleDarkMode} />;
 }
 
 export default function App() {
