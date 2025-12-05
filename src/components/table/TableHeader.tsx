@@ -29,9 +29,10 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
 
   const getWidthClass = (colId: string): string => {
     if (colId === 'col_1') return 'w-[300px]';
-    if (colId === 'col_cat') return 'w-[100px]';
+    if (colId === 'col_cat') return 'w-[120px]';
     if (colId === 'col_2') return 'w-[80px]';
-    if (colId === 'col_3') return 'w-[180px]'; // Deadline
+    if (colId === 'col_3') return 'w-[160px]'; 
+    if (colId === 'col_4') return 'w-[120px]'; 
     return 'w-[150px]';
   };
 

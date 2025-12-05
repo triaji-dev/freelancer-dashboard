@@ -33,9 +33,9 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
             <button
               key={cat}
               onClick={() => onQuickFilter('category', cat)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 cursor-pointer ${
                 isActive 
-                  ? 'bg-zinc-900 text-zinc-500 border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100' 
+                  ? 'bg-blue-500 text-zinc-100 border-blue-200 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100' 
                   : `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-400 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
               }`}
             >
@@ -56,7 +56,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
             switch (status.toLowerCase()) {
               case 'active': activeStyle = 'bg-blue-600 text-white border-blue-600'; break;
               case 'submitted': activeStyle = 'bg-emerald-600 text-white border-emerald-600'; break;
-              case 'canceled': activeStyle = 'bg-zinc-600 text-white border-zinc-600'; break;
+              case 'canceled': activeStyle = 'bg-red-600 text-white border-red-600'; break;
               case 'bookmarked': activeStyle = 'bg-violet-600 text-white border-violet-600'; break;
               case 'watchlisted': activeStyle = 'bg-amber-600 text-white border-amber-600'; break;
               default: activeStyle = 'bg-zinc-900 text-white border-zinc-900';
@@ -67,7 +67,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
             <button
               key={status}
               onClick={() => onQuickFilter('status', status)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 cursor-pointer ${
                 isActive 
                   ? activeStyle
                   : `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-400 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
@@ -84,10 +84,10 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
         <button
           onClick={onClearFilters}
           disabled={Object.keys(filters).length === 0}
-          className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
             Object.keys(filters).length === 0
               ? `opacity-50 cursor-not-allowed ${darkMode ? 'border-zinc-400 text-zinc-400' : 'border-zinc-100 text-zinc-500'}`
-              : `hover:bg-rose-50 dark:hover:bg-rose-900/50 hover:border-rose-200 dark:hover:border-rose-800 hover:text-rose-600 dark:hover:text-rose-400 ${darkMode ? 'border-zinc-400 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
+              : `hover:bg-rose-200 dark:hover:bg-rose-900/50 hover:border-rose-200 dark:hover:border-rose-800 hover:text-rose-600 dark:hover:text-rose-400 ${darkMode ? 'border-zinc-400 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
           }`}
         >
           <FilterX size={12} />
