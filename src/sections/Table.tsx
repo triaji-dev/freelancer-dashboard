@@ -1,24 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Moon, 
-  Sun, 
-  Plus, 
+  ArrowUpDown, 
   Trash2, 
+  Plus, 
+  Download, 
+  Upload, 
+  Type, 
   X, 
   ExternalLink, 
-  Layout,
-  Type,
-  Download,
-  Upload,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
+  ArrowUp, 
+  ArrowDown, 
   Filter,
   FilterX,
   RefreshCw,
   Archive,
-  ArchiveRestore
+  ArchiveRestore,
+  Layout
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 
 // --- Type Definitions ---
 type ColumnType = 'text' | 'link' | 'date' | 'status' | 'category';
@@ -66,41 +66,30 @@ const INITIAL_COLUMNS: Column[] = [
   { id: 'col_5', title: 'Status', type: 'status' },
 ];
 
-const INITIAL_ROWS: Row[] = [
-  { 
-    id: 'row_1', 
-    col_1: 'E-Commerce Redesign', 
-    col_cat: 'Project',
-    col_2: 'https://github.com/example/repo', 
-    col_3: '2025-11-21', 
-    col_4: '$1,500.00', 
-    col_converted: 'Rp 24.000.000',
-    col_5: 'Active' 
-  },
-  { 
-    id: 'row_2', 
-    col_1: 'Logo Design Contest', 
-    col_cat: 'Contest',
-    col_2: '#', 
-    col_3: '2025-11-25', 
-    col_4: '$500.00', 
-    col_converted: 'Rp 8.000.000',
-    col_5: 'Watchlisted' 
-  },
-];
-
 const STATUS_OPTIONS: StatusOption[] = ['Watchlisted', 'Active', 'Submitted', 'Canceled', 'Bookmarked'];
 const CATEGORY_OPTIONS: CategoryOption[] = ['Project', 'Contest'];
 
-export default function App(): React.JSX.Element {
+interface TableProps {
+  darkMode: boolean;
+}
+
+export default function Table({ darkMode }: TableProps): React.JSX.Element {
+  const { user } = useAuth();
+  
   // --- State ---
-  const [darkMode, setDarkMode] = useState<boolean>(false);
   const [columns, setColumns] = useState<Column[]>(INITIAL_COLUMNS);
-  const [rows, setRows] = useState<Row[]>(INITIAL_ROWS);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // UI States
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editingHeader, setEditingHeader] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
   
   // Sorting & Filtering States
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
@@ -108,161 +97,260 @@ export default function App(): React.JSX.Element {
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [showArchived, setShowArchived] = useState<boolean>(false);
   
-  // Confirm Dialog State
-  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => {}
-  });
-  
+  // Currency Conversion State
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [isRateLoading, setIsRateLoading] = useState<boolean>(false);
 
-  // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isInitialLoad = useRef<boolean>(true);
 
-  // --- Effects ---
-  // Fetch Exchange Rate
+  // Fetch Projects from Supabase
   useEffect(() => {
-    const fetchRate = async () => {
+    if (!user) return;
+
+    const fetchProjects = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data) {
+          const mappedRows: Row[] = data.map(item => ({
+            id: item.id,
+            col_1: item.name || '',
+            col_cat: item.category || 'Project',
+            col_2: item.link || '',
+            col_3: item.deadline || '',
+            col_4: item.prize || '',
+            col_5: item.status || 'Watchlisted',
+            archived: item.archived,
+            // Spread metadata for dynamic columns
+            ...(item.metadata || {})
+          }));
+          
+          // Infer dynamic columns from metadata
+          const allKeys = new Set<string>();
+          data.forEach(item => {
+            if (item.metadata) {
+              Object.keys(item.metadata).forEach(key => allKeys.add(key));
+            }
+          });
+
+          const newColumns = [...INITIAL_COLUMNS];
+          allKeys.forEach(key => {
+            if (!newColumns.find(c => c.id === key)) {
+              newColumns.push({
+                id: key,
+                title: key.replace('col_', 'Column '), // Simple title generation
+                type: 'text'
+              });
+            }
+          });
+          
+          setColumns(newColumns);
+          setRows(mappedRows);
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, [user]);
+
+  useEffect(() => {
+    const fetchExchangeRate = async () => {
       setIsRateLoading(true);
       try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
         const data = await response.json();
-        if (data && data.rates && data.rates.IDR) {
-          setExchangeRate(data.rates.IDR);
-        }
+        setExchangeRate(data.rates.IDR);
       } catch (error) {
-        console.error('Error fetching exchange rate:', error);
+        console.error('Failed to fetch exchange rate:', error);
       } finally {
         setIsRateLoading(false);
       }
     };
 
-    fetchRate();
+    fetchExchangeRate();
   }, []);
-  // Load data from localStorage on mount
-  useEffect(() => {
-    const savedColumns = localStorage.getItem('freelancer-dashboard-columns');
-    const savedRows = localStorage.getItem('freelancer-dashboard-rows');
-    
-    if (savedColumns) {
-      try {
-        setColumns(JSON.parse(savedColumns));
-      } catch (error) {
-        console.error('Error loading columns from localStorage:', error);
-      }
-    }
-    
-    if (savedRows) {
-      try {
-        setRows(JSON.parse(savedRows));
-      } catch (error) {
-        console.error('Error loading rows from localStorage:', error);
-      }
-    }
-    
-    // Mark initial load as complete
-    isInitialLoad.current = false;
-  }, []);
-
-  // Save columns to localStorage whenever they change (skip initial load)
-  useEffect(() => {
-    if (!isInitialLoad.current) {
-      localStorage.setItem('freelancer-dashboard-columns', JSON.stringify(columns));
-    }
-  }, [columns]);
-
-  // Save rows to localStorage whenever they change (skip initial load)
-  useEffect(() => {
-    if (!isInitialLoad.current) {
-      localStorage.setItem('freelancer-dashboard-rows', JSON.stringify(rows));
-    }
-  }, [rows]);
-
-  // Detect system color scheme preference on mount
-  useEffect(() => {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setDarkMode(prefersDark);
-    
-    // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      setDarkMode(e.matches);
-    };
-    
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  // Toggle Body Class for Tailwind Dark Mode
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
 
   // --- Handlers: Rows ---
-  const addRow = (): void => {
-    const newId = `row_${Date.now()}`;
-    const newRow: Row = { id: newId };
-    columns.forEach(col => newRow[col.id] = "");
-    // Set default status if exists
-    const statusCol = columns.find(c => c.type === 'status');
-    if (statusCol) newRow[statusCol.id] = 'Watchlisted';
-    const catCol = columns.find(c => c.type === 'category');
-    if (catCol) newRow[catCol.id] = 'Project';
+  const addRow = async (): Promise<void> => {
+    if (!user) return;
     
-    setRows([...rows, newRow]);
+    const newRowData = {
+      user_id: user.id,
+      name: '',
+      category: 'Project',
+      status: 'Watchlisted',
+      archived: false,
+      metadata: {}
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .insert([newRowData])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const newRow: Row = {
+          id: data.id,
+          col_1: data.name || '',
+          col_cat: data.category || 'Project',
+          col_2: data.link || '',
+          col_3: data.deadline || '',
+          col_4: data.prize || '',
+          col_5: data.status || 'Watchlisted',
+          archived: data.archived,
+          ...(data.metadata || {})
+        };
+        
+        // Initialize other columns
+        columns.forEach(col => {
+          if (!newRow[col.id]) newRow[col.id] = '';
+        });
+
+        setRows([newRow, ...rows]);
+      }
+    } catch (error) {
+      console.error('Error adding row:', error);
+      alert('Failed to add new entry. Please try again.');
+    }
   };
 
   const deleteRow = (rowId: string): void => {
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete Row',
-      message: 'Are you sure you want to delete this row? This action cannot be undone.',
-      onConfirm: () => {
-        setRows(rows.filter(r => r.id !== rowId));
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
+      title: 'Delete Entry',
+      message: 'Are you sure you want to delete this entry? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase
+            .from('projects')
+            .delete()
+            .eq('id', rowId);
+
+          if (error) throw error;
+
+          setRows(rows.filter(r => r.id !== rowId));
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+        } catch (error) {
+          console.error('Error deleting row:', error);
+          alert('Failed to delete entry. Please try again.');
+        }
       }
     });
   };
 
-  const toggleRowArchive = (rowId: string): void => {
-    setRows(rows.map(r => {
-      if (r.id === rowId) {
-        return { ...r, archived: !r.archived };
-      }
-      return r;
-    }));
-  };
+  const toggleRowArchive = async (rowId: string): Promise<void> => {
+    const row = rows.find(r => r.id === rowId);
+    if (!row) return;
 
-  const updateCell = (rowId: string, colId: string, value: string): void => {
-    let updatedRows = rows.map(r => r.id === rowId ? { ...r, [colId]: value } : r);
-    
-    // Auto-convert if Prize column is updated
-    const prizeCol = columns.find(c => c.title === 'Prize');
-    const convertedCol = columns.find(c => c.title === 'Converted');
-    
-    if (exchangeRate && prizeCol && convertedCol && colId === prizeCol.id) {
-      const prizeValue = parseFloat(value.replace(/[^0-9.]/g, ''));
-      if (!isNaN(prizeValue)) {
-        const convertedValue = Math.floor(prizeValue * exchangeRate);
-        const formattedConverted = `Rp ${convertedValue.toLocaleString('id-ID')}`;
-        
-        updatedRows = updatedRows.map(r => r.id === rowId ? { ...r, [convertedCol.id]: formattedConverted } : r);
+    const newArchivedStatus = !row.archived;
+
+    // Optimistic update
+    setRows(rows.map(r => r.id === rowId ? { ...r, archived: newArchivedStatus } : r));
+
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ archived: newArchivedStatus })
+        .eq('id', rowId);
+
+      if (error) {
+        // Revert on error
+        setRows(rows.map(r => r.id === rowId ? { ...r, archived: !newArchivedStatus } : r));
+        throw error;
       }
+    } catch (error) {
+      console.error('Error toggling archive status:', error);
+      alert('Failed to update archive status.');
     }
-
-    setRows(updatedRows);
-    setEditingCell(null);
   };
 
-  const recalculateConversions = (): void => {
+  const updateCell = async (rowId: string, colId: string, value: string): Promise<void> => {
+    // 1. Optimistic Update
+    const updatedRows = rows.map(row => {
+      if (row.id === rowId) {
+        const updatedRow = { ...row, [colId]: value };
+        
+        // Auto-calculate conversion if Prize column is updated
+        const prizeCol = columns.find(c => c.title === 'Prize');
+        const convertedCol = columns.find(c => c.title === 'Converted');
+        
+        if (prizeCol && convertedCol && colId === prizeCol.id && exchangeRate) {
+          const prizeValue = parseFloat(value.replace(/[^0-9.]/g, ''));
+          if (!isNaN(prizeValue)) {
+            const convertedValue = Math.floor(prizeValue * exchangeRate);
+            updatedRow[convertedCol.id] = `Rp ${convertedValue.toLocaleString('id-ID')}`;
+          }
+        }
+        
+        return updatedRow;
+      }
+      return row;
+    });
+    setRows(updatedRows);
+
+    // 2. DB Update
+    try {
+      const row = rows.find(r => r.id === rowId);
+      if (!row) return;
+
+      const updates: any = {};
+      
+      // Map column ID to DB field
+      if (colId === 'col_1') updates.name = value;
+      else if (colId === 'col_cat') updates.category = value;
+      else if (colId === 'col_2') updates.link = value;
+      else if (colId === 'col_3') updates.deadline = value || null; // Handle empty date
+      else if (colId === 'col_4') updates.prize = value;
+      else if (colId === 'col_5') updates.status = value;
+      else if (colId === 'col_converted') {
+        // Don't update DB for converted value, it's derived
+        return; 
+      } else {
+        // It's a dynamic column, update metadata
+        // We need to get the current metadata from the row (excluding core fields)
+        const currentMetadata: any = { ...row };
+        delete currentMetadata.id;
+        delete currentMetadata.col_1;
+        delete currentMetadata.col_cat;
+        delete currentMetadata.col_2;
+        delete currentMetadata.col_3;
+        delete currentMetadata.col_4;
+        delete currentMetadata.col_5;
+        delete currentMetadata.col_converted;
+        delete currentMetadata.archived;
+        
+        updates.metadata = { ...currentMetadata, [colId]: value };
+      }
+
+      const { error } = await supabase
+        .from('projects')
+        .update(updates)
+        .eq('id', rowId);
+
+      if (error) throw error;
+
+    } catch (error) {
+      console.error('Error updating cell:', error);
+      // Ideally revert optimistic update here, but for simplicity we just alert
+      // In a real app, we'd refetch or revert
+    }
+  };
+
+  const recalculateConversions = () => {
     if (!exchangeRate) return;
     
     const prizeCol = columns.find(c => c.title === 'Prize');
@@ -473,38 +561,8 @@ export default function App(): React.JSX.Element {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
+    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-zinc-950 text-zinc-500' : 'bg-zinc-50 text-zinc-900'}`}>
       
-      {/* Navigation / Header */}
-      <header className={`sticky top-0 z-20 backdrop-blur-xl border-b transition-colors duration-300 ${darkMode ? 'border-white/5 bg-zinc-950/80' : 'border-black/5 bg-white/80'}`}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl ${darkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
-              <Layout size={20} strokeWidth={2.5} />
-            </div>
-            <h1 className={`text-lg font-bold tracking-tight ${darkMode ? 'text-zinc-100' : 'text-zinc-900'}`}>
-              Freelancer<span className="opacity-50 font-normal">Dashboard</span>
-            </h1>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setShowArchived(!showArchived)}
-              className={`p-2.5 rounded-full transition-all duration-200 cursor-pointer ${showArchived ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100'}`}
-              title={showArchived ? "Show Active Projects" : "Show Archived Projects"}
-            >
-              {showArchived ? <ArchiveRestore size={18} /> : <Archive size={18} />}
-            </button>
-            <button 
-              onClick={() => setDarkMode(!darkMode)}
-              className={`p-2.5 rounded-full transition-all duration-200 cursor-pointer ${darkMode ? 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100' : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900'}`}
-            >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         
@@ -520,13 +578,13 @@ export default function App(): React.JSX.Element {
         {/* Toolbar */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className={`text-2xl font-bold tracking-tight ${darkMode ? 'text-zinc-100' : 'text-zinc-900'}`}>
+            <h2 className={`text-2xl font-bold tracking-tight ${darkMode ? 'text-zinc-500' : 'text-zinc-900'}`}>
               {showArchived ? 'Archived Projects' : 'Projects'}
             </h2>
             <p className={`text-sm mt-1 ${darkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
               {showArchived ? 'View and restore previously archived entries' : 'Manage your active contracts and deliverables'}
             </p>
-            {exchangeRate && (
+            {exchangeRate !== null && (
               <div className="mt-2 flex items-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-full w-fit">
                 <span>1 USD ≈ Rp {exchangeRate.toLocaleString('id-ID')}</span>
                 <button 
@@ -540,9 +598,16 @@ export default function App(): React.JSX.Element {
             )}
           </div>
           <div className="flex items-center gap-2">
+             <button 
+              onClick={() => setShowArchived(!showArchived)}
+              className={`p-2.5 rounded-full transition-all duration-200 cursor-pointer ${showArchived ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-500'}`}
+              title={showArchived ? "Show Active Projects" : "Show Archived Projects"}
+            >
+              {showArchived ? <ArchiveRestore size={18} /> : <Archive size={18} />}
+            </button>
             <button 
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-300 bg-zinc-900/50' : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-600'}`}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-500 bg-zinc-900/50' : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-600'}`}
               title={showFilters ? "Hide Filters" : "Show Filters"}
             >
               {showFilters ? <FilterX size={16} /> : <Filter size={16} />}
@@ -551,21 +616,21 @@ export default function App(): React.JSX.Element {
             <div className={`h-6 w-px mx-1 ${darkMode ? 'bg-zinc-800' : 'bg-zinc-200'}`}></div>
             <button 
               onClick={downloadJSON}
-              className={`p-2 text-sm font-medium rounded-full border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-300 bg-zinc-900/50' : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-600'}`}
+              className={`p-2 text-sm font-medium rounded-full border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-500 bg-zinc-900/50' : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-600'}`}
               title="Download JSON"
             >
               <Download size={18} />
             </button>
             <button 
               onClick={uploadJSON}
-              className={`p-2 text-sm font-medium rounded-full border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-300 bg-zinc-900/50' : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-600'}`}
+              className={`p-2 text-sm font-medium rounded-full border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-500 bg-zinc-900/50' : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-600'}`}
               title="Upload JSON"
             >
               <Upload size={18} />
             </button>
             <button 
               onClick={addColumn}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-300 bg-zinc-900/50' : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-600'}`}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-800 hover:bg-zinc-800 text-zinc-500 bg-zinc-900/50' : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-600'}`}
             >
               <Type size={16} />
               <span className="hidden sm:inline">Add Column</span>
@@ -597,7 +662,7 @@ export default function App(): React.JSX.Element {
                   onClick={() => handleQuickFilter('category', cat)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 ${
                     isActive 
-                      ? 'bg-zinc-900 text-zinc-100 border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100' 
+                      ? 'bg-zinc-900 text-zinc-500 border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100' 
                       : `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-700 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
                   }`}
                 >
@@ -649,7 +714,7 @@ export default function App(): React.JSX.Element {
               disabled={Object.keys(filters).length === 0}
               className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 flex items-center gap-1.5 ${
                 Object.keys(filters).length === 0
-                  ? `opacity-50 cursor-not-allowed ${darkMode ? 'border-zinc-800 text-zinc-600' : 'border-zinc-100 text-zinc-300'}`
+                  ? `opacity-50 cursor-not-allowed ${darkMode ? 'border-zinc-800 text-zinc-600' : 'border-zinc-100 text-zinc-500'}`
                   : `hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:border-rose-200 dark:hover:border-rose-800 hover:text-rose-600 dark:hover:text-rose-400 ${darkMode ? 'border-zinc-700 text-zinc-400' : 'border-zinc-200 text-zinc-600'}`
               }`}
             >
@@ -668,8 +733,16 @@ export default function App(): React.JSX.Element {
               <thead>
                 {/* Header Row with Titles and Sort */}
                 <tr className={`h-12 border-b text-xs font-semibold tracking-wider uppercase ${darkMode ? 'border-zinc-800 bg-zinc-900/50 text-zinc-400' : 'border-zinc-100 bg-zinc-50/80 text-zinc-500'}`}>
-                  {columns.map((col) => (
-                    <th key={col.id} className="px-6 py-3 group first:pl-8">
+                  {columns.map((col) => {
+                    // Determine column width based on ID
+                    let widthClass = 'w-[150px]'; // Default
+                    if (col.id === 'col_1') widthClass = 'w-[300px]'; // Project Name (Wider)
+                    else if (col.id === 'col_cat') widthClass = 'w-[120px]'; // Category (Narrower)
+                    else if (col.id === 'col_2') widthClass = 'w-[100px]'; // Link (Narrower)
+                    else if (col.id === 'col_3') widthClass = 'w-[250px]'; // Deadline (Fixed width, sufficient for date)
+                    
+                    return (
+                    <th key={col.id} className={`px-6 py-3 group first:pl-8 ${widthClass}`}>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-1">
                           {editingHeader === col.id ? (
@@ -680,7 +753,7 @@ export default function App(): React.JSX.Element {
                                 defaultValue={col.title}
                                 onBlur={(e) => updateHeader(col.id, e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && updateHeader(col.id, e.currentTarget.value)}
-                                className={`w-full px-2 py-1 rounded-md border-b-2 outline-none bg-transparent transition-all ${darkMode ? 'border-blue-500 text-zinc-100' : 'border-blue-500 text-zinc-900'}`}
+                                className={`w-full px-2 py-1 rounded-md border-b-2 outline-none bg-transparent transition-all ${darkMode ? 'border-blue-500 text-zinc-500' : 'border-blue-500 text-zinc-900'}`}
                               />
                             </div>
                           ) : (
@@ -713,7 +786,8 @@ export default function App(): React.JSX.Element {
                         </button>
                       </div>
                     </th>
-                  ))}
+                  );
+                })}
                   <th className="px-6 py-3 w-[100px] text-center">Actions</th>
                 </tr>
                 
@@ -741,13 +815,24 @@ export default function App(): React.JSX.Element {
 
               {/* Table Body */}
               <tbody className={`divide-y ${darkMode ? 'divide-zinc-800' : 'divide-zinc-100'}`}>
-                {(() => {
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={columns.length + 1} className="px-6 py-24 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <p className={`text-sm font-medium ${darkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
+                          Loading projects...
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (() => {
                   const displayRows = getFilteredAndSortedRows();
                   return displayRows.length === 0 ? (
                     <tr>
                       <td colSpan={columns.length + 1} className="px-6 py-24 text-center">
                         <div className="flex flex-col items-center justify-center gap-3">
-                          <div className={`p-4 rounded-full ${darkMode ? 'bg-zinc-900 text-zinc-600' : 'bg-zinc-50 text-zinc-300'}`}>
+                          <div className={`p-4 rounded-full ${darkMode ? 'bg-zinc-900 text-zinc-600' : 'bg-zinc-50 text-zinc-500'}`}>
                             <Layout size={32} strokeWidth={1.5} />
                           </div>
                           <p className={`text-sm font-medium ${darkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
@@ -770,7 +855,7 @@ export default function App(): React.JSX.Element {
                                   defaultValue={String(row[col.id] || '')}
                                   onChange={(e) => updateCell(row.id, col.id, e.target.value)}
                                   onBlur={(e) => updateCell(row.id, col.id, e.target.value)}
-                                  className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'}`}
+                                  className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-900'}`}
                                 >
                                   {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
@@ -782,7 +867,7 @@ export default function App(): React.JSX.Element {
                                   defaultValue={String(row[col.id] || '')}
                                   onChange={(e) => updateCell(row.id, col.id, e.target.value)}
                                   onBlur={(e) => updateCell(row.id, col.id, e.target.value)}
-                                  className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'}`}
+                                  className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-900'}`}
                                 >
                                   {CATEGORY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
@@ -795,7 +880,7 @@ export default function App(): React.JSX.Element {
                                   defaultValue={String(row[col.id] || '')}
                                   onBlur={(e) => updateCell(row.id, col.id, e.target.value)}
                                   onKeyDown={(e) => e.key === 'Enter' && updateCell(row.id, col.id, e.currentTarget.value)}
-                                  className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'}`}
+                                  className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-900'}`}
                                 />
                               </div>
                             )
@@ -832,7 +917,7 @@ export default function App(): React.JSX.Element {
                                   {row[col.id] || 'Project'}
                                 </span>
                               ) : (
-                                <span className={!row[col.id] ? 'text-zinc-300 dark:text-zinc-700 text-sm italic' : 'text-zinc-700 dark:text-zinc-300 font-medium'}>
+                                <span className={!row[col.id] ? 'text-zinc-500 dark:text-zinc-700 text-sm italic' : 'text-zinc-700 dark:text-zinc-500 font-medium'}>
                                   {row[col.id] || 'Empty'}
                                 </span>
                               )}
@@ -870,7 +955,7 @@ export default function App(): React.JSX.Element {
           
           {/* Footer / Stats */}
           <div className={`px-8 py-4 border-t text-xs flex justify-between items-center ${darkMode ? 'border-zinc-800 bg-zinc-900/30 text-zinc-500' : 'border-zinc-100 bg-zinc-50/50 text-zinc-400'}`}>
-            <span className="font-medium">Total Entries: <span className={`ml-1 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>{rows.length}</span></span>
+            <span className="font-medium">Total Entries: <span className={`ml-1 ${darkMode ? 'text-zinc-500' : 'text-zinc-700'}`}>{rows.length}</span></span>
             <span className={darkMode ? 'text-zinc-600' : 'text-zinc-400'}>Last Updated: {new Date().toLocaleDateString()}</span>
           </div>
         </div>
@@ -883,7 +968,7 @@ export default function App(): React.JSX.Element {
           <div className={`max-w-md w-full rounded-2xl shadow-2xl border transform transition-all scale-100 ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-100'}`}>
             {/* Modal Header */}
             <div className="px-6 pt-6 pb-2">
-              <h3 className={`text-lg font-bold ${darkMode ? 'text-zinc-100' : 'text-zinc-900'}`}>
+              <h3 className={`text-lg font-bold ${darkMode ? 'text-zinc-500' : 'text-zinc-900'}`}>
                 {confirmDialog.title}
               </h3>
             </div>
@@ -899,7 +984,7 @@ export default function App(): React.JSX.Element {
             <div className="px-6 py-6 flex justify-end gap-3">
               <button
                 onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
-                className={`px-4 py-2 text-sm font-medium rounded-xl border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300' : 'border-zinc-200 hover:bg-zinc-50 text-zinc-600'}`}
+                className={`px-4 py-2 text-sm font-medium rounded-xl border transition-all duration-200 cursor-pointer ${darkMode ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-500' : 'border-zinc-200 hover:bg-zinc-50 text-zinc-600'}`}
               >
                 Cancel
               </button>
