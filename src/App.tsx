@@ -27,7 +27,7 @@ function Dashboard({ darkMode, toggleDarkMode }: DashboardProps) {
               <h1 className="text-lg font-bold tracking-tight text-blue-500">
                 Freelancer Dashboard
               </h1>
-              <p className="text-[10px] font-medium text-zinc-500 tracking-wider">
+              <p className={`text-[10px] md:text-xs font-medium tracking-wider ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
                 {user?.email}
               </p>
             </div>

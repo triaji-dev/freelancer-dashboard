@@ -32,7 +32,7 @@ const TutorialTooltip = ({
     >
       {/* Header with Step Count and Close */}
       <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800/50">
-        <span className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
           Tip {index + 1}
         </span>
         <button 

@@ -750,6 +750,7 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
         <div className={`rounded-2xl border overflow-hidden transition-all duration-300 ${darkMode ? 'border-zinc-800 bg-zinc-900/30 shadow-inner shadow-black/20' : 'border-zinc-200 bg-white shadow-xl shadow-zinc-200/50'}`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm table-fixed">
+              <caption className="sr-only">List of freelancer projects with status, category, and earnings details</caption>
               
               <TableHeader 
                 columns={columns}

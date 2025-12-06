@@ -1,5 +1,5 @@
 import React from 'react';
-import { FilterX } from 'lucide-react';
+import { FilterX, ChevronDown } from 'lucide-react';
 import type { Column } from './types';
 import { STATUS_OPTIONS, CATEGORY_OPTIONS } from './types';
 
@@ -21,7 +21,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
   return (
     <div className="mb-6 space-y-3 joyride-quick-filters">
       <div className="flex items-center justify-between px-1 mt-4">
-        <span className={`text-xs font-semibold uppercase tracking-wider ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+        <span className={`text-xs font-semibold uppercase tracking-wider ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
           Quick Filters
         </span>
         {Object.keys(filters).length > 0 && (
@@ -46,20 +46,43 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
           const statusCol = columns.find(c => c.type === 'status');
           
           return (
-            <div className="flex flex-col md:flex-row items-start gap-6 md:gap-12">
+            <div className="grid grid-cols-2 md:flex md:flex-row items-start gap-4 md:gap-12">
               {/* Categories Section */}
-              <div className="space-y-2">
-                <h3 className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+              <div className="space-y-2 w-full">
+                <h3 className={`text-[10px] md:text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
                   By Category
                 </h3>
-                <div className="flex flex-wrap gap-2">
+                
+                {/* Mobile Dropdown */}
+                <div className="md:hidden relative w-full">
+                  <select
+                    value={categoryCol && filters[categoryCol.id] ? filters[categoryCol.id] : ''}
+                    onChange={(e) => onQuickFilter('category', e.target.value)}
+                    className={`w-full appearance-none pl-4 pr-10 py-2.5 text-sm font-medium rounded-xl border outline-none transition-all cursor-pointer ${
+                      darkMode 
+                        ? 'bg-zinc-800 border-zinc-700 text-zinc-300 focus:border-blue-500 hover:border-zinc-600' 
+                        : 'bg-white border-zinc-200 text-zinc-700 focus:border-blue-500 hover:border-zinc-300'
+                    }`}
+                  >
+                    <option value="">All Categories</option>
+                    {CATEGORY_OPTIONS.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  <div className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                    <ChevronDown size={16} />
+                  </div>
+                </div>
+
+                {/* Desktop Buttons */}
+                <div className="hidden md:flex flex-wrap gap-2">
                   {CATEGORY_OPTIONS.map(cat => {
                     const isActive = categoryCol && filters[categoryCol.id] === cat;
                     return (
                       <button
                         key={cat}
                         onClick={() => onQuickFilter('category', cat)}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all duration-200 cursor-pointer ${
+                        className={`px-4 py-2.5 text-sm font-medium rounded-xl border transition-all duration-200 cursor-pointer ${
                           isActive 
                             ? 'bg-blue-500 text-white border-blue-500 dark:bg-blue-600 dark:border-blue-600 shadow-sm' 
                             : `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-500 text-zinc-400 bg-zinc-800/30' : 'border-zinc-500 text-zinc-600 bg-white'}`
@@ -73,11 +96,33 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
               </div>
 
               {/* Status Section */}
-              <div className="space-y-2">
-                <h3 className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+              <div className="space-y-2 w-full">
+                <h3 className={`text-[10px] md:text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
                   By Status
                 </h3>
-                <div className="flex flex-wrap gap-2">
+                {/* Mobile Dropdown */}
+                <div className="md:hidden relative w-full">
+                  <select
+                    value={statusCol && filters[statusCol.id] ? filters[statusCol.id] : ''}
+                    onChange={(e) => onQuickFilter('status', e.target.value)}
+                    className={`w-full appearance-none pl-4 pr-10 py-2.5 text-sm font-medium rounded-xl border outline-none transition-all cursor-pointer ${
+                      darkMode 
+                        ? 'bg-zinc-800 border-zinc-700 text-zinc-300 focus:border-blue-500 hover:border-zinc-600' 
+                        : 'bg-white border-zinc-200 text-zinc-700 focus:border-blue-500 hover:border-zinc-300'
+                    }`}
+                  >
+                    <option value="">All Statuses</option>
+                    {STATUS_OPTIONS.map(status => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                  <div className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                    <ChevronDown size={16} />
+                  </div>
+                </div>
+
+                {/* Desktop Buttons */}
+                <div className="hidden md:flex flex-wrap gap-2">
                    {STATUS_OPTIONS.map(status => {
                     const isActive = statusCol && filters[statusCol.id] === status;
                     
@@ -85,10 +130,10 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
                     if (isActive) {
                       switch (status.toLowerCase()) {
                         case 'active': activeStyle = 'bg-blue-600 text-white border-blue-600 shadow-sm'; break;
-                        case 'submitted': activeStyle = 'bg-emerald-600 text-white border-emerald-600 shadow-sm'; break;
+                        case 'submitted': activeStyle = 'bg-emerald-700 text-white border-emerald-700 shadow-sm'; break;
                         case 'canceled': activeStyle = 'bg-red-600 text-white border-red-600 shadow-sm'; break;
                         case 'bookmarked': activeStyle = 'bg-violet-600 text-white border-violet-600 shadow-sm'; break;
-                        case 'watchlisted': activeStyle = 'bg-amber-600 text-white border-amber-600 shadow-sm'; break;
+                        case 'watchlisted': activeStyle = 'bg-amber-700 text-white border-amber-700 shadow-sm'; break;
                         default: activeStyle = 'bg-zinc-900 text-white border-zinc-900';
                       }
                     } else {
@@ -111,7 +156,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
                       <button
                         key={status}
                         onClick={() => onQuickFilter('status', status)}
-                        className={`pl-2 pr-3 py-1.5 text-xs font-medium rounded-lg border transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+                        className={`pl-3 pr-4 py-2.5 text-sm font-medium rounded-xl border transition-all duration-200 cursor-pointer flex items-center gap-2 ${
                           isActive ? activeStyle : activeStyle
                         }`}
                       >
