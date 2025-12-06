@@ -27,6 +27,56 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   onToggleMode,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    
+    if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setEmailError('Please enter a valid email address');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPassword(value);
+
+    if (value && value.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+    } else {
+      setPasswordError('');
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    let isValid = true;
+    
+    if (!email) {
+      setEmailError('Email is required');
+      isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+       setEmailError('Please enter a valid email address');
+       isValid = false;
+    }
+
+    if (!password) {
+      setPasswordError('Password is required');
+      isValid = false;
+    } else if (password.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      isValid = false;
+    }
+
+    if (isValid) {
+      onSubmit(e);
+    }
+  };
 
   // Dynamic theme colors based on mode
   const theme = isSignUp ? {
@@ -103,7 +153,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           </p>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4 relative z-10">
+        <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
           <div className="space-y-2">
             <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Email</label>
             <div className="relative">
@@ -116,10 +166,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 autoComplete="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent outline-none focus:ring-2 ${theme.ringColor} ${theme.borderColor} transition-all`}
+                onChange={handleEmailChange}
+                className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${emailError ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : `border-zinc-200 dark:border-zinc-800 ${theme.borderColor}`} bg-transparent outline-none focus:ring-2 ${theme.ringColor} transition-all`}
                 placeholder="name@example.com"
               />
+              {emailError && <p className="text-xs text-red-500 mt-1 ml-1">{emailError}</p>}
             </div>
           </div>
 
@@ -135,10 +186,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 autoComplete={isSignUp ? "new-password" : "current-password"}
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={`w-full pl-10 pr-10 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent outline-none focus:ring-2 ${theme.ringColor} ${theme.borderColor} transition-all font-sans`}
+                onChange={handlePasswordChange}
+                className={`w-full pl-10 pr-10 py-2.5 rounded-xl border ${passwordError ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : `border-zinc-200 dark:border-zinc-800 ${theme.borderColor}`} bg-transparent outline-none focus:ring-2 ${theme.ringColor} transition-all font-sans`}
                 placeholder="••••••••"
               />
+              {passwordError && <p className="text-xs text-red-500 mt-1 ml-1">{passwordError}</p>}
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
