@@ -46,9 +46,9 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
           const statusCol = columns.find(c => c.type === 'status');
           
           return (
-            <div className="grid grid-cols-2 md:flex md:flex-row items-start gap-4 md:gap-12">
+            <div className="grid grid-cols-2 md:flex md:flex-row items-start gap-4">
               {/* Categories Section */}
-              <div className="space-y-2 w-full">
+              <div className="space-y-2 w-full md:w-auto md:flex-none">
                 <h3 className={`text-[10px] md:text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
                   By Category
                 </h3>
@@ -96,7 +96,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
               </div>
 
               {/* Status Section */}
-              <div className="space-y-2 w-full">
+              <div className="space-y-2 w-full md:flex-1">
                 <h3 className={`text-[10px] md:text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
                   By Status
                 </h3>

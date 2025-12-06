@@ -254,10 +254,15 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
         
         <button 
           onClick={onToggleFilters}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 cursor-pointer joyride-filters ${darkMode ? 'border-zinc-500 hover:bg-zinc-800 text-zinc-200 bg-zinc-600/50' : 'border-zinc-500 hover:bg-zinc-50 bg-white text-zinc-200'}`}
+          className={`px-4 py-3 rounded-xl border transition-all duration-200 cursor-pointer joyride-filters ${
+            darkMode 
+              ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300 bg-zinc-800/50' 
+              : 'border-zinc-300 hover:bg-zinc-50 bg-white text-zinc-700'
+          }`}
           title={showFilters ? "Hide Filters" : "Show Filters"}
         >
-          {showFilters ? <FilterX size={18} /> : <Filter size={18} />}
+          {showFilters ? <FilterX size={20} /> : <Filter size={20} />}
+          <span className="sr-only">Toggle Filters</span>
         </button>
       </div>
     </div>

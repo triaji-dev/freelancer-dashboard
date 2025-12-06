@@ -51,6 +51,7 @@ export const TableRow: React.FC<TableRowProps> = ({
             onClick={() => onArchive(row.id)}
             className={`p-2 rounded-full transition-all duration-200 cursor-pointer ${showArchived ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' : 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}
             title={showArchived ? "Restore Entry" : "Archive Entry"}
+            aria-label={showArchived ? "Restore Entry" : "Archive Entry"}
           >
             {showArchived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
           </button>
@@ -58,6 +59,7 @@ export const TableRow: React.FC<TableRowProps> = ({
             onClick={() => onDelete(row.id)}
             className="text-zinc-400 hover:text-rose-500 transition-all duration-200 p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20 cursor-pointer"
             title="Delete Entry"
+            aria-label="Delete Entry"
           >
             <Trash2 size={16} />
           </button>

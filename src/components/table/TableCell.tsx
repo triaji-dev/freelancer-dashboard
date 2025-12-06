@@ -162,7 +162,7 @@ export const TableCell: React.FC<TableCellProps> = ({
           {row[column.id] || 'Project'}
         </span>
       ) : (
-        <span className={!row[column.id] ? 'text-zinc-500 dark:text-zinc-700 text-sm italic' : 'text-zinc-400 dark:text-zinc-400'}>
+        <span className={!row[column.id] ? 'text-zinc-500 dark:text-zinc-700 text-sm italic' : 'text-zinc-800 dark:text-zinc-400'}>
           {row[column.id] || 'Empty'}
         </span>
       )}
