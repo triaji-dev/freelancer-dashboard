@@ -9,6 +9,7 @@ import type {
   SortConfig, 
   ConfirmDialogState, 
 } from '../components/table/types';
+import { TableTutorial } from '../components/table/TableTutorial';
 import { TableToolbar } from '../components/table/TableToolbar';
 import { QuickFilters } from '../components/table/QuickFilters';
 import { TableHeader } from '../components/table/TableHeader';
@@ -57,6 +58,127 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
   // Currency Conversion State
   const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
   const [isRateLoading, setIsRateLoading] = useState<boolean>(false);
+
+  // Tutorial State
+  const [runTutorial, setRunTutorial] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const checkTutorialStatus = async () => {
+      // Short delay to ensure DOM is ready, but faster response
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('tutorial_seen')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) {
+          // If "Row not found" (PGRST116), it means it's a new user -> Run Tutorial
+          if (error.code === 'PGRST116') {
+            setRunTutorial(true);
+            return;
+          }
+           console.error('Error checking tutorial, skipping:', error);
+           return;
+        }
+
+        // Run if tutorial_seen is false or null
+        if (data && !data.tutorial_seen) {
+           setRunTutorial(true);
+        }
+      } catch (error) {
+        console.error('Unexpected error checking tutorial:', error);
+      }
+    };
+
+    // Reset finish guard when user changes
+    hasFinishedRef.current = false;
+    checkTutorialStatus();
+  }, [user]);
+
+  /* Ref to prevent double-execution of finish logic (e.g. React Strict Mode) */
+  const hasFinishedRef = useRef(false);
+
+  const handleTutorialFinish = async () => {
+    // Prevent double execution
+    if (hasFinishedRef.current) return;
+    hasFinishedRef.current = true;
+
+    setRunTutorial(false);
+    if (!user) return;
+
+    // 1. Mark tutorial as seen in Supabase (Profiles)
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({ 
+          id: user.id, 
+          tutorial_seen: true,
+          updated_at: new Date().toISOString() 
+        });
+
+      if (error) {
+        console.error('Failed to update tutorial status (profiles table might be missing?):', error);
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+    }
+
+    // 2. Auto-create Dummy Entry (Independent of profile success)
+    try {
+      const deadlineDate = new Date();
+      deadlineDate.setDate(deadlineDate.getDate() + 7);
+      const formattedDeadline = deadlineDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      const dummyEntry = {
+        user_id: user.id,
+        name: 'My First Project Example',
+        category: 'Web Development',
+        link: 'https://example.com/project',
+        deadline: formattedDeadline,
+        prize: '$1,000',
+        status: 'Active',
+        archived: false,
+        metadata: {}
+      };
+
+      const { data: newProject, error: projectError } = await supabase
+        .from('projects')
+        .insert([dummyEntry])
+        .select()
+        .single();
+      
+      if (projectError) {
+        console.error('Error creating dummy project:', projectError);
+      } else if (newProject) {
+         // Transform to local row format and update state
+         const newRow: Row = {
+          id: newProject.id,
+          col_1: newProject.name || '',
+          col_cat: newProject.category || 'Project',
+          col_2: newProject.link || '',
+          col_3: newProject.deadline || '',
+          col_4: newProject.prize || '',
+          col_5: newProject.status || 'Watchlisted',
+          archived: newProject.archived,
+          ...(newProject.metadata || {})
+        };
+        
+        // Ensure all columns exist
+        columns.forEach(col => {
+          if (!newRow[col.id]) newRow[col.id] = '';
+        });
+        
+        setRows(prev => [newRow, ...prev]);
+      }
+    } catch (error) {
+      console.error('Error in dummy entry creation:', error);
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -554,6 +676,12 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
       
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        
+        <TableTutorial 
+          run={runTutorial} 
+          onFinish={handleTutorialFinish}
+          darkMode={darkMode}
+        />
         
         {/* Hidden file input for upload */}
         <input

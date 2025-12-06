@@ -48,3 +48,31 @@ create trigger projects_updated_at
   before update on projects
   for each row
   execute procedure handle_updated_at();
+
+-- Create profiles table
+create table profiles (
+  id uuid references auth.users not null primary key,
+  tutorial_seen boolean default false,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS for profiles
+alter table profiles enable row level security;
+
+create policy "Users can view their own profile"
+  on profiles for select
+  using ( auth.uid() = id );
+
+create policy "Users can insert their own profile"
+  on profiles for insert
+  with check ( auth.uid() = id );
+
+create policy "Users can update their own profile"
+  on profiles for update
+  using ( auth.uid() = id );
+
+-- Create trigger for profiles updated_at
+create trigger profiles_updated_at
+  before update on profiles
+  for each row
+  execute procedure handle_updated_at();

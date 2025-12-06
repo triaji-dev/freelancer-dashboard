@@ -109,7 +109,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
           
           <button 
             onClick={onToggleFilters}
-            className={buttonBaseClass}
+            className={`${buttonBaseClass} joyride-filters`}
             title={showFilters ? "Hide Filters" : "Show Filters"}
           >
             {showFilters ? <FilterX size={16} /> : <Filter size={16} />}
@@ -138,7 +138,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
           </button>
           <button 
             onClick={onAddColumn}
-            className={buttonBaseClass}
+            className={`${buttonBaseClass} joyride-add-column`}
             title="Add Column"
           >
             <Type size={16} />
@@ -152,7 +152,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
         {/* Primary CTA */}
         <button 
           onClick={onAddRow}
-          className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 hover:shadow-lg hover:shadow-blue-500/25 active:scale-95 transition-all duration-200 cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 hover:shadow-lg hover:shadow-blue-500/25 active:scale-95 transition-all duration-200 cursor-pointer joyride-add-entry"
         >
           <Plus size={16} strokeWidth={2.5} />
           New Entry
@@ -246,7 +246,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
       <div className="md:hidden flex items-center gap-2">
         <button 
           onClick={onAddRow}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/25 active:scale-95 transition-all duration-200 cursor-pointer"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/25 active:scale-95 transition-all duration-200 cursor-pointer joyride-add-entry"
         >
           <Plus size={18} strokeWidth={2.5} />
           New Entry
@@ -254,11 +254,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
         
         <button 
           onClick={onToggleFilters}
-          className={`${iconButtonClass} ${
-            showFilters 
-              ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-400' 
-              : ''
-          }`}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 cursor-pointer joyride-filters ${darkMode ? 'border-zinc-500 hover:bg-zinc-800 text-zinc-200 bg-zinc-600/50' : 'border-zinc-500 hover:bg-zinc-50 bg-white text-zinc-200'}`}
           title={showFilters ? "Hide Filters" : "Show Filters"}
         >
           {showFilters ? <FilterX size={18} /> : <Filter size={18} />}

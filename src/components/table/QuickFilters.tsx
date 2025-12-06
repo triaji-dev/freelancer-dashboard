@@ -19,7 +19,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
   onClearFilters,
 }) => {
   return (
-    <div className="mb-6 space-y-3">
+    <div className="mb-6 space-y-3 joyride-quick-filters">
       <div className="flex items-center justify-between px-1 mt-4">
         <span className={`text-xs font-semibold uppercase tracking-wider ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
           Quick Filters
@@ -46,7 +46,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
           const statusCol = columns.find(c => c.type === 'status');
           
           return (
-            <div className="space-y-6">
+            <div className="flex flex-col md:flex-row items-start gap-6 md:gap-12">
               {/* Categories Section */}
               <div className="space-y-2">
                 <h3 className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
