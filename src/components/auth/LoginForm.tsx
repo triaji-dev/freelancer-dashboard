@@ -89,7 +89,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           
           <div className="flex items-center gap-2 mb-2">
             <h1 className="text-2xl font-bold tracking-tight">
-              {isSignUp ? 'Create an account' : 'Welcome back'}
+              {isSignUp ? 'Create an Account' : 'Welcome Back'}
             </h1>
             {isSignUp && (
               <Sparkles className="text-emerald-500 animate-pulse" size={20} />
@@ -181,7 +181,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full py-3 rounded-xl text-white font-medium ${theme.gradient} ${theme.bgHover} ${theme.ringFocus} disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg ${theme.shadowColor} hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]`}
+            className={`w-full py-3 rounded-xl text-white font-medium cursor-pointer ${theme.gradient} ${theme.bgHover} ${theme.ringFocus} disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg ${theme.shadowColor} hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]`}
           >
             {isLoading ? (
               <>
