@@ -30,9 +30,11 @@ const INITIAL_COLUMNS: Column[] = [
 
 interface TableProps {
   darkMode: boolean;
+  runTutorial: boolean;
+  setRunTutorial: (run: boolean) => void;
 }
 
-export default function Table({ darkMode }: TableProps): React.JSX.Element {
+export default function Table({ darkMode, runTutorial, setRunTutorial }: TableProps): React.JSX.Element {
   const { user } = useAuth();
   
   // --- State ---
@@ -59,14 +61,20 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
   const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
   const [isRateLoading, setIsRateLoading] = useState<boolean>(false);
 
-  // Tutorial State
-  const [runTutorial, setRunTutorial] = useState(false);
-
   useEffect(() => {
     if (!user) return;
 
     const checkTutorialStatus = async () => {
-      // Short delay to ensure DOM is ready, but faster response
+      // 1. Check Local Storage first for immediate feedback
+      const localSeen = localStorage.getItem('tutorial_seen');
+      
+      // If locally marked as seen, we can tentatively trust it to avoid flicker
+      // But we still check Supabase to be sure (e.g. cleared cache but account exists)
+      if (localSeen === 'true') {
+        return;
+      }
+
+      // Short delay to ensure DOM is ready
       await new Promise(resolve => setTimeout(resolve, 500));
 
       try {
@@ -77,18 +85,21 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
           .single();
         
         if (error) {
-          // If "Row not found" (PGRST116), it means it's a new user -> Run Tutorial
-          if (error.code === 'PGRST116') {
+          // If profile missing (new user) or permission denied, start tutorial
+          if (error.code === 'PGRST116' || error.code === '42501') {
             setRunTutorial(true);
             return;
           }
-           console.error('Error checking tutorial, skipping:', error);
+           console.error('Error checking tutorial:', error);
            return;
         }
 
-        // Run if tutorial_seen is false or null
+        // If Supabase says not seen, run it
         if (data && !data.tutorial_seen) {
            setRunTutorial(true);
+        } else {
+           // If Supabase says seen but local didn't know, update local
+           localStorage.setItem('tutorial_seen', 'true');
         }
       } catch (error) {
         console.error('Unexpected error checking tutorial:', error);
@@ -98,7 +109,7 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
     // Reset finish guard when user changes
     hasFinishedRef.current = false;
     checkTutorialStatus();
-  }, [user]);
+  }, [user, setRunTutorial]);
 
   /* Ref to prevent double-execution of finish logic (e.g. React Strict Mode) */
   const hasFinishedRef = useRef(false);
@@ -109,9 +120,13 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
     hasFinishedRef.current = true;
 
     setRunTutorial(false);
+    
+    // 1. Mark locally immediately
+    localStorage.setItem('tutorial_seen', 'true');
+
     if (!user) return;
 
-    // 1. Mark tutorial as seen in Supabase (Profiles)
+    // 2. Mark tutorial as seen in Supabase (Profiles)
     try {
       const { error } = await supabase
         .from('profiles')
@@ -122,7 +137,7 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
         });
 
       if (error) {
-        console.error('Failed to update tutorial status (profiles table might be missing?):', error);
+        console.error('Failed to update tutorial status in DB:', error);
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -136,8 +151,8 @@ export default function Table({ darkMode }: TableProps): React.JSX.Element {
 
       const dummyEntry = {
         user_id: user.id,
-        name: 'My First Project Example',
-        category: 'Web Development',
+        name: 'My Project Example',
+        category: 'Project',
         link: 'https://example.com/project',
         deadline: formattedDeadline,
         prize: '$1,000',

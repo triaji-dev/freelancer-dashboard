@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Table from './sections/Table';
-import { Moon, Sun, Layout, LogOut } from 'lucide-react';
+import { Moon, Sun, Layout, LogOut, PlayCircle } from 'lucide-react';
 
 interface DashboardProps {
   darkMode: boolean;
@@ -11,6 +11,7 @@ interface DashboardProps {
 
 function Dashboard({ darkMode, toggleDarkMode }: DashboardProps) {
   const { signOut, user } = useAuth();
+  const [runTutorial, setRunTutorial] = useState(false);
   
   return (
     <div className={`min-h-screen transition-colors duration-300 font-sans ${darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
@@ -34,6 +35,13 @@ function Dashboard({ darkMode, toggleDarkMode }: DashboardProps) {
           
           <div className="flex items-center gap-3">
             <button 
+              onClick={() => setRunTutorial(true)}
+              className={`p-2 rounded-full transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer ${darkMode ? 'bg-zinc-800 text-blue-400 hover:bg-zinc-700' : 'bg-zinc-100 text-blue-600 hover:bg-zinc-200'}`}
+              title="Start Tutorial"
+            >
+              <PlayCircle size={18} />
+            </button>
+            <button 
               onClick={toggleDarkMode}
               className={`p-2 rounded-full transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer ${darkMode ? 'bg-zinc-800 text-yellow-400 hover:bg-zinc-700' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
               title="Toggle Theme"
@@ -51,7 +59,7 @@ function Dashboard({ darkMode, toggleDarkMode }: DashboardProps) {
         </div>
       </header>
 
-      <Table darkMode={darkMode} />
+      <Table darkMode={darkMode} runTutorial={runTutorial} setRunTutorial={setRunTutorial} />
     </div>
   );
 }

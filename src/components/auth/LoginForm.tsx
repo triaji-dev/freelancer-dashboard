@@ -193,7 +193,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 {isSignUp ? (
                   <>
                     <UserPlus size={18} />
-                    Create Account
+                    Sign Up
                   </>
                 ) : (
                   <>

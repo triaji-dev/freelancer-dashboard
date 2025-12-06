@@ -37,7 +37,7 @@ const TutorialTooltip = ({
         </span>
         <button 
           {...closeProps} 
-          className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
         >
           <X size={14} />
         </button>
@@ -46,7 +46,7 @@ const TutorialTooltip = ({
       {/* Content Body */}
       <div className="p-5">
         {step.title && (
-          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-2">
+          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-2 cursor-pointer">
             {step.title}
           </h3>
         )}
@@ -59,7 +59,7 @@ const TutorialTooltip = ({
       <div className="flex items-center justify-between p-4 bg-zinc-50/50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800/50">
         <button 
           {...skipProps}
-          className="text-xs font-medium text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors px-2 py-1"
+          className="text-xs font-medium text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors px-2 py-1 cursor-pointer"
         >
           Skip Tour
         </button>
@@ -68,7 +68,7 @@ const TutorialTooltip = ({
           {index > 0 && (
             <button
               {...backProps}
-              className="flex items-center justify-center p-2 rounded-lg text-zinc-500 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:bg-zinc-800 transition-colors"
+              className="flex items-center justify-center p-2 rounded-lg text-zinc-500 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               title="Previous"
             >
               <ChevronLeft size={16} />
@@ -77,7 +77,7 @@ const TutorialTooltip = ({
 
           <button
             {...primaryProps}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-500/20 active:scale-95 transition-all duration-200"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-500/20 active:scale-95 transition-all duration-200 cursor-pointer"
           >
             {isLastStep ? 'Finish' : 'Next'}
             {!isLastStep && <ChevronRight size={14} />}
@@ -96,7 +96,7 @@ export const TableTutorial: React.FC<TableTutorialProps> = ({
   const [steps] = useState<Step[]>([
     {
       target: 'body',
-      title: 'Welcome to Your Dashboard! 👋',
+      title: 'Welcome to Your Dashboard!',
       content: (
         <p>Let's take a quick tour to help you get started with managing your freelancer projects.</p>
       ),
@@ -137,7 +137,7 @@ export const TableTutorial: React.FC<TableTutorialProps> = ({
     },
     {
       target: 'body',
-      title: 'Ready to Go! 🚀',
+      title: 'Ready to Go!',
       content: (
         <p>We will create a sample "First Project" entry for you now so you can see how it works. Dive in!</p>
       ),
@@ -172,7 +172,7 @@ export const TableTutorial: React.FC<TableTutorialProps> = ({
       styles={{
         options: {
           zIndex: 10000,
-          overlayColor: darkMode ? 'rgba(0, 0, 0, 0.75)' : 'rgba(0, 0, 0, 0.5)',
+          overlayColor: darkMode ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.75)',
         }
       }}
     />
