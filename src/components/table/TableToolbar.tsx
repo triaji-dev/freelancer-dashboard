@@ -46,13 +46,13 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
 
   const buttonBaseClass = `flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border transition-all duration-200 cursor-pointer active:scale-95 ${
     darkMode 
-      ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300 bg-zinc-800/50' 
-      : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-700'
+      ? 'border-zinc-500 hover:bg-zinc-800 text-zinc-300 bg-zinc-800/50' 
+      : 'border-zinc-500 hover:bg-zinc-50 bg-white text-zinc-700'
   }`;
 
   const iconButtonClass = `flex items-center justify-center p-2.5 rounded-xl border transition-all duration-200 cursor-pointer active:scale-95 ${
     darkMode 
-      ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300 bg-zinc-800/50' 
+      ? 'border-zinc-500 hover:bg-zinc-800 text-zinc-300 bg-zinc-800/50' 
       : 'border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-700'
   }`;
 

@@ -20,7 +20,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
 }) => {
   return (
     <div className="mb-6 space-y-3">
-      <div className="flex items-center justify-between px-1">
+      <div className="flex items-center justify-between px-1 mt-4">
         <span className={`text-xs font-semibold uppercase tracking-wider ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
           Quick Filters
         </span>
@@ -62,7 +62,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
                         className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all duration-200 cursor-pointer ${
                           isActive 
                             ? 'bg-blue-500 text-white border-blue-500 dark:bg-blue-600 dark:border-blue-600 shadow-sm' 
-                            : `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-700 text-zinc-400 bg-zinc-800/30' : 'border-zinc-200 text-zinc-600 bg-white'}`
+                            : `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-500 text-zinc-400 bg-zinc-800/30' : 'border-zinc-500 text-zinc-600 bg-white'}`
                         }`}
                       >
                         {cat}
@@ -92,7 +92,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
                         default: activeStyle = 'bg-zinc-900 text-white border-zinc-900';
                       }
                     } else {
-                       activeStyle = `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-700 text-zinc-400 bg-zinc-800/30' : 'border-zinc-200 text-zinc-600 bg-white'}`;
+                       activeStyle = `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 ${darkMode ? 'border-zinc-500 text-zinc-400 bg-zinc-800/30' : 'border-zinc-500 text-zinc-600 bg-white'}`;
                     }
                     
                     // Simple dot indicator for status
