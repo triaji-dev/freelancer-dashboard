@@ -14,7 +14,7 @@ function Dashboard({ darkMode, toggleDarkMode }: DashboardProps) {
   const [runTutorial, setRunTutorial] = useState(false);
   
   return (
-    <div className={`min-h-screen transition-colors duration-300 font-sans ${darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
+    <div className={`min-h-screen flex flex-col transition-colors duration-300 font-sans ${darkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
       
       {/* Header */}
       <header className={`sticky top-0 z-40 backdrop-blur-xl border-b transition-all duration-300 ${darkMode ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white/80 border-zinc-200'}`}>
@@ -60,6 +60,22 @@ function Dashboard({ darkMode, toggleDarkMode }: DashboardProps) {
       </header>
 
       <Table darkMode={darkMode} runTutorial={runTutorial} setRunTutorial={setRunTutorial} />
+
+      <footer className={`py-6 mt-auto border-t ${darkMode ? 'border-zinc-800' : 'border-zinc-200'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className={`text-sm ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>
+            &copy; {new Date().getFullYear()} Freelancer Dashboard
+          </p>
+          <a 
+            href="https://tri-aji-prabandaru.vercel.app/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className={`text-sm transition-colors ${darkMode ? 'text-zinc-500 hover:text-blue-400' : 'text-zinc-400 hover:text-blue-600'}`}
+          >
+            tri-aji-prabandaru.vercel.app
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

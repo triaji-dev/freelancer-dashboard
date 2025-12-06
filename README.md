@@ -1,73 +1,47 @@
-# React + TypeScript + Vite
+# Freelancer Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A custom-built web application designed to streamline the freelance job hunting process. This responsive dashboard helps users track freelance gigs and design contests, providing real-time data on potential earnings and deadlines to simplify decision-making.
 
-Currently, two official plugins are available:
+## 🚀 Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+*   **Multi-Currency Converter**: Automatically converts prize values from global currencies (USD, EUR, GBP, AUD) to IDR for instant value assessment using real-time rates.
+*   **Smart Filtering**: "Quick Filters" to sort opportunities by Category (Project vs. Contest) or Status (Watchlisted, Active, Submitted).
+*   **Deadline Tracking**: Clear visualization of project deadlines to help prioritize submissions.
+*   **Dynamic Data Table**: Sortable columns for Deadlines, Prize Amounts, and Status.
+*   **Workflow System**: Comprehensive status tracking (Watchlist → Active → Submitted → Canceled).
+*   **Modern UI/UX**: A sleek, persistent dark-mode interface with "Cyberpunk/Futuristic" aesthetics, responsive design, and high-contrast status badges.
 
-## React Compiler
+## 🛠️ Technical Stack
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+*   **Frontend Framework**: React + TypeScript + Vite
+*   **Styling**: Tailwind CSS
+*   **Icons**: Lucide React
+*   **Backend/Database**: Supabase
+*   **Onboarding**: React Joyride (Interactive tutorials)
 
-## Expanding the ESLint configuration
+## 🏃‍♂️ Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/yourusername/freelancer-dashboard.git
+    cd freelancer-dashboard
+    ```
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+2.  **Install dependencies**
+    ```bash
+    npm install
+    ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+3.  **Run the development server**
+    ```bash
+    npm run dev
+    ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 🌐 Deployment
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+[Deployed on Vercel.](https://freelancer-dashboard-xi.vercel.app/)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 👤 Author
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+**Tri Aji Prabandaru**  
+[Portfolio Website](https://tri-aji-prabandaru.vercel.app/)
