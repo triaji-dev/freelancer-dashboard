@@ -3,16 +3,19 @@ import {
   Plus, 
   RefreshCw,
   Archive,
-  ArchiveRestore
+  ArchiveRestore,
+  LayoutGrid
 } from 'lucide-react';
 
 interface TableToolbarProps {
   showArchived: boolean;
+  showActiveCards: boolean; // New Prop
   showFilters: boolean;
   darkMode: boolean;
   exchangeRates: Record<string, number> | null;
   isRateLoading: boolean;
   onToggleArchived: () => void;
+  onToggleActiveCards: () => void; // New Prop
   onToggleFilters: () => void;
   onRecalculate: () => void;
   onDownload: () => void;
@@ -23,10 +26,12 @@ interface TableToolbarProps {
 
 export const TableToolbar: React.FC<TableToolbarProps> = ({
   showArchived,
+  showActiveCards,
   darkMode,
   exchangeRates,
   isRateLoading,
   onToggleArchived,
+  onToggleActiveCards,
   onRecalculate,
   onAddRow,
 }) => {
@@ -79,6 +84,18 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
             {showArchived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
           </button>
           
+          <button 
+            onClick={onToggleActiveCards}
+            className={`${iconButtonClass} ${
+              showActiveCards 
+                ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-400' 
+                : ''
+            }`}
+            title={showActiveCards ? "Hide Active Cards" : "Show Active Cards"}
+          >
+            <LayoutGrid size={16} />
+          </button>
+          
         </div>
         {/* Separator */}
         <div className={`h-6 w-px ${darkMode ? 'bg-zinc-700' : 'bg-zinc-300'}`}></div>
@@ -119,6 +136,19 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
           {showArchived ? <ArchiveRestore size={20} /> : <Archive size={20} />}
           <span className="sr-only">{showArchived ? 'Show Active' : 'Show Archived'}</span>
         </button> 
+
+        <button 
+            onClick={onToggleActiveCards}
+            className={`px-4 py-3 rounded-xl border transition-all duration-200 cursor-pointer ${
+              showActiveCards 
+                ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-400' 
+                : darkMode 
+                  ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300 bg-zinc-800/50' 
+                  : 'border-zinc-300 hover:bg-zinc-50 bg-white text-zinc-700'
+            }`}
+          >
+            <LayoutGrid size={20} />
+          </button> 
         
       </div>
     </div>

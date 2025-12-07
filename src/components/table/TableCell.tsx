@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { ExternalLink, Calendar, Clock } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { ExternalLink } from 'lucide-react';
 import type { Column, Row } from './types';
 import { STATUS_OPTIONS, CATEGORY_OPTIONS } from './types';
+import { PortalDropdown } from '../shared/PortalDropdown';
+import { DateDurationPicker } from '../shared/DateDurationPicker';
 
 interface TableCellProps {
   row: Row;
@@ -14,205 +15,7 @@ interface TableCellProps {
   onEditEnd: () => void;
 }
 
-interface DateDurationPickerProps {
-  darkMode: boolean;
-  onSave: (val: string) => void;
-  onCancel: () => void;
-}
 
-interface PortalDropdownProps {
-  children: React.ReactNode;
-  anchorRef: React.RefObject<HTMLElement>;
-  isOpen: boolean;
-  darkMode: boolean;
-  width?: string;
-  className?: string; // Add className prop
-}
-
-const PortalDropdown: React.FC<PortalDropdownProps> = ({ 
-  children, 
-  anchorRef, 
-  isOpen, 
-  darkMode,
-  width = 'w-48',
-  className = ''
-}) => {
-  const [position, setPosition] = useState<{ top: number; left: number; placement: 'bottom' | 'top' } | null>(null);
-
-  useLayoutEffect(() => {
-    if (isOpen && anchorRef.current) {
-      const updatePosition = () => {
-        if (!anchorRef.current) return;
-        const rect = anchorRef.current.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const spaceAbove = rect.top;
-        const dropdownHeight = 300; // Estimated max height
-
-        let top = rect.bottom + window.scrollY + 4;
-        let placement: 'bottom' | 'top' = 'bottom';
-
-        if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
-           // Place above
-           top = rect.top + window.scrollY - 4; // We will translate -100% in CSS
-           placement = 'top';
-        }
-
-        setPosition({
-          top,
-          left: rect.left + window.scrollX,
-          placement
-        });
-      };
-
-      updatePosition();
-      window.addEventListener('scroll', updatePosition, true);
-      window.addEventListener('resize', updatePosition);
-
-      return () => {
-        window.removeEventListener('scroll', updatePosition, true);
-        window.removeEventListener('resize', updatePosition);
-      };
-    }
-  }, [isOpen, anchorRef]);
-
-  // Handle click outside
-  useEffect(() => {
-    // We'll let the content handle strict "close on click outside" if needed, 
-    // or we can add a ref here. 
-    // For simplicity, let's just make sure we don't block clicks that initiated the toggle.
-    return () => {};
-  }, [isOpen, anchorRef]);
-
-
-  if (!isOpen || !position) return null;
-
-  return createPortal(
-    <div 
-        className={`fixed z-[9999] ${width} ${className} shadow-xl border rounded-xl overflow-hidden duration-150 ${darkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-200' : 'bg-white border-zinc-200 text-zinc-900'}`}
-        style={{  
-            top: position.top, 
-            left: position.left,
-            transform: position.placement === 'top' ? 'translateY(-100%)' : 'none'
-        }}
-    >
-      {children}
-    </div>,
-    document.body
-  );
-};
-
-const DateDurationPicker: React.FC<DateDurationPickerProps> = ({ darkMode, onSave, onCancel }) => {
-  const [days, setDays] = useState<string>('0');
-  const [hours, setHours] = useState<string>('0');
-  const containerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    // Focus days input on mount inside the portal
-    const timer = setTimeout(() => {
-      containerRef.current?.querySelector('input')?.focus();
-    }, 50);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const previewTime = useMemo(() => {
-    const d = parseInt(days) || 0;
-    const h = parseInt(hours) || 0;
-    const now = new Date();
-    // Use current time as base
-    now.setDate(now.getDate() + d);
-    now.setHours(now.getHours() + h);
-    return now;
-  }, [days, hours]);
-
-  const handleSave = () => {
-    // Format: YYYY-MM-DD HH:mm
-    const yyyy = previewTime.getFullYear();
-    const mm = String(previewTime.getMonth() + 1).padStart(2, '0');
-    const dd = String(previewTime.getDate()).padStart(2, '0');
-    const hh = String(previewTime.getHours()).padStart(2, '0');
-    const min = String(previewTime.getMinutes()).padStart(2, '0');
-    onSave(`${yyyy}-${mm}-${dd} ${hh}:${min}`);
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      className={`p-4 flex flex-col gap-4 cursor-default`}
-      onClick={(e) => e.stopPropagation()}
-      tabIndex={-1}
-      onBlur={(e) => {
-        // Only cancel if focus moves outside the container
-        if (!containerRef.current?.contains(e.relatedTarget as Node)) {
-          onCancel();
-        }
-      }}
-    >
-      <div className="flex items-center justify-between">
-        <h4 className="font-semibold text-sm">Set Deadline</h4>
-        <div className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20">
-          ADD TO NOW
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium opacity-70 block">Days</label>
-          <div className="relative">
-            <input
-              type="number"
-              min="0"
-              value={days}
-              onChange={(e) => setDays(e.target.value)}
-              onFocus={() => days === '0' && setDays('')}
-              className={`w-full pl-8 pr-2 py-1.5 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 ${
-                darkMode ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-50 border-zinc-200'
-              }`}
-            />
-            <Calendar size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 opacity-50" />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium opacity-70 block">Hours</label>
-          <div className="relative">
-            <input
-              type="number"
-              min="0"
-              value={hours}
-              onChange={(e) => setHours(e.target.value)}
-              onFocus={() => hours === '0' && setHours('')}
-              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-              className={`w-full pl-8 pr-2 py-1.5 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 ${
-                darkMode ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-50 border-zinc-200'
-              }`}
-            />
-            <Clock size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 opacity-50" />
-          </div>
-        </div>
-      </div>
-
-      <div className={`text-xs p-2 rounded-lg text-center border ${
-        darkMode ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-50 border-zinc-200'
-      }`}>
-        <div className="opacity-60 mb-1">Pass Deadline</div>
-        <div className="font-medium text-blue-500 text-sm">
-          {previewTime.toLocaleString('en-GB', { 
-            day: 'numeric', 
-            month: 'short', 
-            year: 'numeric', 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })}
-        </div>
-      </div>
-
-      <button
-        onClick={handleSave}
-        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-blue-900/20 cursor-pointer"
-      >
-        Set Deadline
-      </button>
-    </div>
-  );
-};
 
 export const TableCell: React.FC<TableCellProps> = ({
   row,
@@ -308,15 +111,15 @@ export const TableCell: React.FC<TableCellProps> = ({
     if (!dateStr) return '';
     try {
       const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return dateStr; // Fallback to raw string if invalid
+      if (isNaN(date.getTime())) return dateStr;
       
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      const hh = String(date.getHours()).padStart(2, '0');
-      const min = String(date.getMinutes()).padStart(2, '0');
-      
-      return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+      return date.toLocaleDateString('en-GB', { 
+        day: 'numeric', 
+        month: 'short', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     } catch {
       return dateStr;
     }

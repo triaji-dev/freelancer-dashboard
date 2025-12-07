@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Table from './sections/Table';
-import { Moon, Sun, Layout, LogOut, PlayCircle } from 'lucide-react';
+import { Moon, Sun, Layout, LogOut, Play } from 'lucide-react';
 
 interface DashboardProps {
   darkMode: boolean;
@@ -20,11 +20,11 @@ function Dashboard({ darkMode, toggleDarkMode }: DashboardProps) {
       <header className={`sticky top-0 z-40 backdrop-blur-xl border-b transition-all duration-300 ${darkMode ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white/80 border-zinc-200'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+            <div className="p-2 rounded-xl bg-zinc-600 text-white shadow-lg shadow-blue-600/20">
               <Layout size={20} strokeWidth={1.5} />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-blue-500">
+              <h1 className={`text-lg font-bold tracking-tight ${darkMode ? 'text-zinc-100' : 'text-zinc-600'}`}>
                 Freelancer Dashboard
               </h1>
               <p className={`text-[10px] md:text-xs font-medium tracking-wider ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
@@ -39,7 +39,7 @@ function Dashboard({ darkMode, toggleDarkMode }: DashboardProps) {
               className={`p-2 rounded-full transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer ${darkMode ? 'bg-zinc-800 text-blue-400 hover:bg-zinc-700' : 'bg-zinc-100 text-blue-600 hover:bg-zinc-200'}`}
               title="Start Tutorial"
             >
-              <PlayCircle size={18} />
+              <Play size={18} />
             </button>
             <button 
               onClick={toggleDarkMode}

@@ -12,6 +12,7 @@ import type {
 import { TableTutorial } from '../components/table/TableTutorial';
 import { TableToolbar } from '../components/table/TableToolbar';
 import { QuickFilters } from '../components/table/QuickFilters';
+import { ActiveProjectsGrid } from '../components/board/ActiveProjectsGrid';
 import { TableHeader } from '../components/table/TableHeader';
 import { TableRow } from '../components/table/TableRow';
 import { ConfirmDialog } from '../components/table/ConfirmDialog';
@@ -52,10 +53,12 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
   });
   
   // Sorting & Filtering States
+
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [showArchived, setShowArchived] = useState<boolean>(false);
+  const [showActiveCards, setShowActiveCards] = useState<boolean>(true);
   
   // Currency Conversion State
   const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
@@ -726,11 +729,13 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
           <div className="relative z-10 p-6 sm:p-8">
             <TableToolbar 
               showArchived={showArchived}
+              showActiveCards={showActiveCards}
               showFilters={showFilters}
               darkMode={true}
               exchangeRates={exchangeRates}
               isRateLoading={isRateLoading}
               onToggleArchived={() => setShowArchived(!showArchived)}
+              onToggleActiveCards={() => setShowActiveCards(!showActiveCards)}
               onToggleFilters={() => setShowFilters(!showFilters)}
               onRecalculate={recalculateConversions}
               onDownload={downloadJSON}
@@ -748,6 +753,17 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
             />
           </div>
         </div>
+
+        {/* Active Projects Cards */}
+        {showActiveCards && !showArchived && (
+          <ActiveProjectsGrid
+            rows={rows}
+            darkMode={darkMode}
+            onUpdate={updateCell}
+            onArchive={toggleRowArchive}
+            onDelete={deleteRow}
+          />
+        )}
 
         {/* Table Container */}
         <div className={`rounded-2xl border overflow-hidden transition-all duration-300 ${darkMode ? 'border-zinc-800 bg-zinc-900/30 shadow-inner shadow-black/20' : 'border-zinc-200 bg-white shadow-xl shadow-zinc-200/50'}`}>
