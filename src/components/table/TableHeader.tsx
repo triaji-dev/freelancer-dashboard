@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ArrowUp, ArrowDown, ArrowUpDown, X, Filter } from 'lucide-react';
+import React from 'react';
+import { ArrowUp, ArrowDown, ArrowUpDown, Filter } from 'lucide-react';
 import type { Column, SortConfig } from './types';
 
 interface TableHeaderProps {
@@ -9,8 +9,6 @@ interface TableHeaderProps {
   showFilters: boolean;
   darkMode: boolean;
   onSort: (columnId: string) => void;
-  onUpdateHeader: (columnId: string, newTitle: string) => void;
-  onDeleteColumn: (columnId: string) => void;
   onFilterChange: (columnId: string, value: string) => void;
 }
 
@@ -21,17 +19,15 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   showFilters,
   darkMode,
   onSort,
-  onUpdateHeader,
-  onDeleteColumn,
   onFilterChange,
 }) => {
-  const [editingHeader, setEditingHeader] = useState<string | null>(null);
+
 
   const getWidthClass = (colId: string): string => {
-    if (colId === 'col_1') return 'w-[300px]';
+    if (colId === 'col_1') return 'w-[280px]';
     if (colId === 'col_cat') return 'w-[120px]';
     if (colId === 'col_2') return 'w-[80px]';
-    if (colId === 'col_3') return 'w-[160px]'; 
+    if (colId === 'col_3') return 'w-[180px]'; 
     if (colId === 'col_4') return 'w-[120px]'; 
     return 'w-[150px]';
   };
@@ -43,30 +39,9 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
           <th key={col.id} className={`px-6 py-3 group first:pl-8 ${getWidthClass(col.id)}`}>
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 flex-1">
-                {editingHeader === col.id ? (
-                  <div className="flex items-center gap-1 w-full">
-                    <input 
-                      autoFocus
-                      type="text" 
-                      defaultValue={col.title}
-                      onBlur={(e) => {
-                        onUpdateHeader(col.id, e.target.value);
-                        setEditingHeader(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          onUpdateHeader(col.id, e.currentTarget.value);
-                          setEditingHeader(null);
-                        }
-                      }}
-                      className={`w-full px-2 py-1 rounded-md border-b-2 outline-none bg-transparent transition-all ${darkMode ? 'border-blue-500 text-zinc-500' : 'border-blue-500 text-zinc-900'}`}
-                    />
-                  </div>
-                ) : (
                   <>
                     <span 
-                      onClick={() => setEditingHeader(col.id)}
-                      className="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                      className="cursor-default"
                     >
                       {col.title}
                     </span>
@@ -82,14 +57,8 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
                       )}
                     </button>
                   </>
-                )}
               </div>
-              <button 
-                onClick={() => onDeleteColumn(col.id)}
-                className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-500 transition-all duration-200 cursor-pointer"
-              >
-                <X size={14} />
-              </button>
+
             </div>
           </th>
         ))}

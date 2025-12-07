@@ -38,7 +38,11 @@ export const TableRow: React.FC<TableRowProps> = ({
             isEditing={editingCell?.rowId === row.id && editingCell?.colId === col.id}
             darkMode={darkMode}
             onUpdate={(val) => onUpdateCell(row.id, col.id, val)}
-            onEditStart={() => onEditStart(row.id, col.id)}
+            onEditStart={() => {
+              if (col.title !== 'Converted') {
+                onEditStart(row.id, col.id);
+              }
+            }}
             onEditEnd={onEditEnd}
           />
         </td>

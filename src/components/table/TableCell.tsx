@@ -1,5 +1,6 @@
-import React, {  useEffect, useRef } from 'react';
-import { ExternalLink } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { ExternalLink, Calendar, Clock } from 'lucide-react';
 import type { Column, Row } from './types';
 import { STATUS_OPTIONS, CATEGORY_OPTIONS } from './types';
 
@@ -13,6 +14,206 @@ interface TableCellProps {
   onEditEnd: () => void;
 }
 
+interface DateDurationPickerProps {
+  darkMode: boolean;
+  onSave: (val: string) => void;
+  onCancel: () => void;
+}
+
+interface PortalDropdownProps {
+  children: React.ReactNode;
+  anchorRef: React.RefObject<HTMLElement>;
+  isOpen: boolean;
+  darkMode: boolean;
+  width?: string;
+  className?: string; // Add className prop
+}
+
+const PortalDropdown: React.FC<PortalDropdownProps> = ({ 
+  children, 
+  anchorRef, 
+  isOpen, 
+  darkMode,
+  width = 'w-48',
+  className = ''
+}) => {
+  const [position, setPosition] = useState<{ top: number; left: number; placement: 'bottom' | 'top' } | null>(null);
+
+  useLayoutEffect(() => {
+    if (isOpen && anchorRef.current) {
+      const updatePosition = () => {
+        if (!anchorRef.current) return;
+        const rect = anchorRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        const dropdownHeight = 300; // Estimated max height
+
+        let top = rect.bottom + window.scrollY + 4;
+        let placement: 'bottom' | 'top' = 'bottom';
+
+        if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+           // Place above
+           top = rect.top + window.scrollY - 4; // We will translate -100% in CSS
+           placement = 'top';
+        }
+
+        setPosition({
+          top,
+          left: rect.left + window.scrollX,
+          placement
+        });
+      };
+
+      updatePosition();
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+      };
+    }
+  }, [isOpen, anchorRef]);
+
+  // Handle click outside
+  useEffect(() => {
+    // We'll let the content handle strict "close on click outside" if needed, 
+    // or we can add a ref here. 
+    // For simplicity, let's just make sure we don't block clicks that initiated the toggle.
+    return () => {};
+  }, [isOpen, anchorRef]);
+
+
+  if (!isOpen || !position) return null;
+
+  return createPortal(
+    <div 
+        className={`fixed z-[9999] ${width} ${className} shadow-xl border rounded-xl overflow-hidden duration-150 ${darkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-200' : 'bg-white border-zinc-200 text-zinc-900'}`}
+        style={{  
+            top: position.top, 
+            left: position.left,
+            transform: position.placement === 'top' ? 'translateY(-100%)' : 'none'
+        }}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+};
+
+const DateDurationPicker: React.FC<DateDurationPickerProps> = ({ darkMode, onSave, onCancel }) => {
+  const [days, setDays] = useState<string>('0');
+  const [hours, setHours] = useState<string>('0');
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Focus days input on mount inside the portal
+    const timer = setTimeout(() => {
+      containerRef.current?.querySelector('input')?.focus();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const previewTime = useMemo(() => {
+    const d = parseInt(days) || 0;
+    const h = parseInt(hours) || 0;
+    const now = new Date();
+    // Use current time as base
+    now.setDate(now.getDate() + d);
+    now.setHours(now.getHours() + h);
+    return now;
+  }, [days, hours]);
+
+  const handleSave = () => {
+    // Format: YYYY-MM-DD HH:mm
+    const yyyy = previewTime.getFullYear();
+    const mm = String(previewTime.getMonth() + 1).padStart(2, '0');
+    const dd = String(previewTime.getDate()).padStart(2, '0');
+    const hh = String(previewTime.getHours()).padStart(2, '0');
+    const min = String(previewTime.getMinutes()).padStart(2, '0');
+    onSave(`${yyyy}-${mm}-${dd} ${hh}:${min}`);
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className={`p-4 flex flex-col gap-4 cursor-default`}
+      onClick={(e) => e.stopPropagation()}
+      tabIndex={-1}
+      onBlur={(e) => {
+        // Only cancel if focus moves outside the container
+        if (!containerRef.current?.contains(e.relatedTarget as Node)) {
+          onCancel();
+        }
+      }}
+    >
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-sm">Set Deadline</h4>
+        <div className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20">
+          ADD TO NOW
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium opacity-70 block">Days</label>
+          <div className="relative">
+            <input
+              type="number"
+              min="0"
+              value={days}
+              onChange={(e) => setDays(e.target.value)}
+              onFocus={() => days === '0' && setDays('')}
+              className={`w-full pl-8 pr-2 py-1.5 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                darkMode ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-50 border-zinc-200'
+              }`}
+            />
+            <Calendar size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 opacity-50" />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium opacity-70 block">Hours</label>
+          <div className="relative">
+            <input
+              type="number"
+              min="0"
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+              onFocus={() => hours === '0' && setHours('')}
+              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+              className={`w-full pl-8 pr-2 py-1.5 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                darkMode ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-50 border-zinc-200'
+              }`}
+            />
+            <Clock size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 opacity-50" />
+          </div>
+        </div>
+      </div>
+
+      <div className={`text-xs p-2 rounded-lg text-center border ${
+        darkMode ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-50 border-zinc-200'
+      }`}>
+        <div className="opacity-60 mb-1">Pass Deadline</div>
+        <div className="font-medium text-blue-500 text-sm">
+          {previewTime.toLocaleString('en-GB', { 
+            day: 'numeric', 
+            month: 'short', 
+            year: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          })}
+        </div>
+      </div>
+
+      <button
+        onClick={handleSave}
+        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-blue-900/20 cursor-pointer"
+      >
+        Set Deadline
+      </button>
+    </div>
+  );
+};
+
 export const TableCell: React.FC<TableCellProps> = ({
   row,
   column,
@@ -22,13 +223,64 @@ export const TableCell: React.FC<TableCellProps> = ({
   onEditStart,
   onEditEnd,
 }) => {
-  const inputRef = useRef<HTMLInputElement | HTMLSelectElement>(null);
+  const inputRef = useRef<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>(null);
+  const dateAnchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
     }
   }, [isEditing]);
+  
+
+
+  // Close when clicking outside of both input and portal content
+  useEffect(() => {
+      if (!isEditing) return;
+      const handleClickOutside = (e: MouseEvent) => {
+         // If click is in inputRef (the trigger), ignore (it might be toggling, let onClick handle)
+         if (inputRef.current && inputRef.current.contains(e.target as Node)) {
+             return;
+         }
+         // If click is in the portal... but wait, the portal DOM node is at body level. 
+         // We need to check if the target is contained within our specific portal instance.
+         // However, we don't have a direct ref to the portal DOM node unless we pass it or query it.
+         // Easier: use a backdrop or check specifically against `portalContentRef` which we will assume is inside the portal.
+         // But PortalDropdown renders Children. We can wrap children in a div with ref.
+         
+         // Actually, simpler approach for this "Table Cell Edit Mode":
+         // We typically want to close edit mode if user clicks anywhere else in the table.
+         // `onEditEnd` should be called.
+         
+         // Check if click target is NOT in inputRef and NOT in portal.
+         // Since Portal is not in this component's DOM tree, `inputRef.current.contains` won't work for it.
+         // We need a ref to the content inside the portal.
+         
+         // Let's assume we pass a generic 'click outside' handler to the document.
+         const target = e.target as Node;
+         
+         // We need to know if the click was inside the portal.
+         // Since the portal renders `children`, we can wrap children in a div with `portalContentRef`.
+         // But `PortalDropdown` is generic. Let's make `PortalDropdown` handle the ref check if possible?
+         // No, let's just assume we need a ref in the content we pass to PortalDropdown.
+          
+         // FIX: Use a data attribute or class to identify our dropdowns or just perform the check on the known elements.
+         // The simplest way is to check if `e.target` is connected to the document (it might be removed if we just clicked an option).
+         if (!document.body.contains(target)) return;
+         
+         // We can use the fact that events bubble. But this is a window listener.
+         // Let's try to trust the `onBlur` of the input/button first, but Portals confuse onBlur.
+         // The focus stays on the button or moves to the portal content.
+         
+         // If we are using a Portal, `onBlur` from the button will trigger when we click the portal (since it's outside button).
+         // So we need to prevent `onEditEnd` if the new focus is in the portal.
+      };
+      
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isEditing]);
+
+
 
   const getStatusColor = (status?: string): string => {
     const base = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border";
@@ -38,6 +290,7 @@ export const TableCell: React.FC<TableCellProps> = ({
       case 'canceled': return `${base} bg-zinc-50 text-zinc-700 border-zinc-200 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-700/50`;
       case 'bookmarked': return `${base} bg-violet-50 text-violet-700 border-violet-100 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20`;
       case 'watchlisted': return `${base} bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30`;
+      case 'pending': return `${base} bg-orange-50 text-orange-700 border-orange-100 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20`;
       default: return `${base} bg-zinc-50 text-zinc-700 border-zinc-200 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-700/50`;
     }
   };
@@ -48,6 +301,24 @@ export const TableCell: React.FC<TableCellProps> = ({
       case 'project': return `${base} bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400`;
       case 'contest': return `${base} bg-pink-50 text-pink-700 dark:bg-pink-500/10 dark:text-pink-400`;
       default: return `${base} bg-zinc-50 text-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-400`;
+    }
+  };
+
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr; // Fallback to raw string if invalid
+      
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      const hh = String(date.getHours()).padStart(2, '0');
+      const min = String(date.getMinutes()).padStart(2, '0');
+      
+      return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+    } catch {
+      return dateStr;
     }
   };
 
@@ -64,45 +335,94 @@ export const TableCell: React.FC<TableCellProps> = ({
               Using tabindex to allow the div to receive focus/blur events.
             */}
             <button
+              ref={inputRef as React.RefObject<HTMLButtonElement>}
               autoFocus
               className={commonInputClasses + " text-left cursor-default flex items-center justify-between"}
-              onBlur={(e) => {
-                  // Check if the new focus is within our dropdown (e.g. clicking an option)
-                  // If s, don't close yet (the option click handler will close it)
-                  // However, since options are children, onBlur bubbles or relatedTarget checks are needed.
-                  // A simpler way: use a timeout to allow click to process, or check relatedTarget.
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                      onEditEnd();
-                  }
+              onBlur={() => {
+                  // For Portals: checking relatedTarget is tricky because the portal is outside the React tree in DOM structure?
+                  // Actually `createPortal` preserves React Event bubbling, so `onBlur` on the button *might* catch focus moving to the portal children
+                  // IF the portal children are considered part of the tree.
+                  // BUT for `e.relatedTarget` (DOM node), it will be the div in <body>.
+                  // So `e.currentTarget.contains` (the button) will respond false.
+                  
+                  // We need to check if the relatedTarget is part of our Portal.
+                  // Since we don't have an easy ref to the portal root DOM here, we can use a class or ID check
+                  // OR we can rely on the fact that if we are clicking "Status Options", we handle the click explicitly.
+                  // If we click outside, we want to close.
+                  
+                  // A common hack: delay the close slightly. If a reusable option is clicked, it will fire BEFORE the timeout closes it.
+                  // setTimeout(() => onEditEnd(), 100);
+                  
+                  // Better: Don't close on blur immediately. Let the global click handler or specific interactions close it.
+                  // But we need to support Tabbing out.
               }}
             >
               {String(row[column.id] || (column.type === 'status' ? 'Watchlisted' : 'Project'))}
             </button>
             
-            <div className={`absolute left-0 top-full mt-1 z-50 w-48 p-1 rounded-xl shadow-xl border overflow-hidden animate-in fade-in zoom-in-95 duration-100 ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'}`}>
-              <div className="flex flex-col gap-0.5">
+            <PortalDropdown
+              anchorRef={inputRef as React.RefObject<HTMLElement>}
+              isOpen={true} // Always open when isEditing
+              darkMode={darkMode}
+              width="w-48"
+            >
+              <div className="flex flex-col gap-0.5 p-1">
                 {options.map((opt) => (
                   <button
                     key={opt}
-                    onMouseDown={(e) => {
-                        // Prevent the button from stealing focus which would trigger onBlur on the parent immediately
-                        e.preventDefault(); 
-                    }}
-                    onClick={() => {
-                      onUpdate(opt);
-                      onEditEnd();
-                    }}
+                    // Prevent default on mousedown to stop focus from leaving the trigger button completely?
+                    // Actually we want focus to move here if we key down.
                     className={`px-3 py-2 text-sm text-left rounded-lg transition-colors ${
                        String(row[column.id]) === opt 
                         ? (darkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-700')
                         : (darkMode ? 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900')
                     }`}
+                    onClick={() => {
+                        onUpdate(opt);
+                        onEditEnd();
+                    }}
                   >
                     {opt}
                   </button>
                 ))}
               </div>
-            </div>
+            </PortalDropdown>
+            
+            {/* Overlay to handle clicking outside if we want to be strict, but the PortalDropdown doesn't block interactions. 
+                We rely on the "Clicking an option closes it" and "Clicking outside (handled by a listener?)"
+                Actually, the easiest way to handle "Click outside closes" with a Portal 
+                is to have an invisible fixed backdrop.
+            */}
+            <div className="fixed inset-0 z-[9998]" onClick={onEditEnd} />
+        </div>
+      );
+    }
+
+    if (column.type === 'date') {
+      return (
+        <div ref={dateAnchorRef} className="relative h-full flex items-center bg-blue">
+          {/* Use a div as the anchor ref holder, or we can attach ref to the container div above? 
+              The container div has 'h-full flex items-center', but passing that ref is fine. 
+          */}
+          <PortalDropdown
+             anchorRef={dateAnchorRef}
+             isOpen={true}
+             darkMode={darkMode}
+             width="w-72"
+             // Custom class for the picker which has specific styling
+             className=""
+          >
+             <DateDurationPicker
+                darkMode={darkMode}
+                onSave={(val) => {
+                  onUpdate(val);
+                  onEditEnd();
+                }}
+                onCancel={onEditEnd}
+              />
+          </PortalDropdown>
+           {/* Invisible backdrop for clicking outside */}
+           <div className="fixed inset-0 z-[9998]" onClick={onEditEnd} />
         </div>
       );
     }
@@ -111,11 +431,11 @@ export const TableCell: React.FC<TableCellProps> = ({
       <div className="flex items-center h-full">
         <input
           ref={inputRef as React.RefObject<HTMLInputElement>}
-          type={column.type === 'date' ? 'date' : 'text'}
+          type="text"
           defaultValue={String(row[column.id] || '')}
           onBlur={(e) => {
-            onUpdate(e.target.value);
-            onEditEnd();
+             onUpdate(e.target.value);
+             onEditEnd();
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -133,7 +453,7 @@ export const TableCell: React.FC<TableCellProps> = ({
   return (
     <div 
       onClick={onEditStart}
-      className="cursor-pointer h-full flex items-center"
+      className={`${column.title === 'Converted' ? 'cursor-default' : 'cursor-pointer'} h-full flex items-center`}
     >
       {column.type === 'link' && row[column.id] ? (
         <a 
@@ -153,6 +473,7 @@ export const TableCell: React.FC<TableCellProps> = ({
             String(row[column.id] || '')?.toLowerCase() === 'canceled' ? 'bg-zinc-500' :
             String(row[column.id] || '')?.toLowerCase() === 'bookmarked' ? 'bg-violet-500' :
             String(row[column.id] || '')?.toLowerCase() === 'watchlisted' ? 'bg-amber-500' :
+            String(row[column.id] || '')?.toLowerCase() === 'pending' ? 'bg-orange-500' :
             'bg-zinc-400'
           }`}></span>
           {row[column.id] || 'Watchlisted'}
@@ -160,6 +481,10 @@ export const TableCell: React.FC<TableCellProps> = ({
       ) : column.type === 'category' ? (
         <span className={getCategoryColor(String(row[column.id] || ''))}>
           {row[column.id] || 'Project'}
+        </span>
+      ) : column.type === 'date' ? (
+        <span className={!row[column.id] ? 'text-zinc-500 dark:text-zinc-700 text-sm italic' : 'text-zinc-800 dark:text-zinc-400'}>
+          {row[column.id] ? formatDate(String(row[column.id])) : 'Empty'}
         </span>
       ) : (
         <span className={!row[column.id] ? 'text-zinc-500 dark:text-zinc-700 text-sm italic' : 'text-zinc-800 dark:text-zinc-400'}>

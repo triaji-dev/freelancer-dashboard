@@ -29,8 +29,8 @@ export interface ConfirmDialogState {
   onConfirm: () => void;
 }
 
-export type StatusOption = 'Watchlisted' | 'Active' | 'Submitted' | 'Canceled' | 'Bookmarked';
+export type StatusOption = 'Watchlisted' | 'Active' | 'Submitted' | 'Canceled' | 'Bookmarked' | 'Pending';
 export type CategoryOption = 'Project' | 'Contest';
 
-export const STATUS_OPTIONS: StatusOption[] = ['Watchlisted', 'Active', 'Submitted', 'Canceled', 'Bookmarked'];
+export const STATUS_OPTIONS: StatusOption[] = ['Watchlisted', 'Active', 'Submitted', 'Canceled', 'Bookmarked', 'Pending'];
 export const CATEGORY_OPTIONS: CategoryOption[] = ['Project', 'Contest'];

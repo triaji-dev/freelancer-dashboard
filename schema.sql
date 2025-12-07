@@ -5,7 +5,7 @@ create table projects (
   name text,
   category text,
   link text,
-  deadline date,
+  deadline timestamp with time zone,
   prize text,
   metadata jsonb default '{}'::jsonb,
   status text default 'Watchlisted',

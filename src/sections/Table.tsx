@@ -60,6 +60,14 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
   // Currency Conversion State
   const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
   const [isRateLoading, setIsRateLoading] = useState<boolean>(false);
+  
+  // Real-time Clock State
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -147,7 +155,7 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
     try {
       const deadlineDate = new Date();
       deadlineDate.setDate(deadlineDate.getDate() + 7);
-      const formattedDeadline = deadlineDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      const formattedDeadline = deadlineDate.toISOString().slice(0, 16).replace('T', ' '); // YYYY-MM-DD HH:mm
 
       const dummyEntry = {
         user_id: user.id,
@@ -308,7 +316,7 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
     const newRowData = {
       user_id: user.id,
       name: '',
-      category: 'Project',
+      category: 'Contest',
       status: 'Watchlisted',
       archived: false,
       metadata: {}
@@ -518,24 +526,9 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
     setRows(rows.map(r => ({ ...r, [newId]: '' })));
   };
 
-  const deleteColumn = (colId: string): void => {
-    const column = columns.find(c => c.id === colId);
-    const columnName = column?.title || 'this column';
-    
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Delete Column',
-      message: `Are you sure you want to delete "${columnName}"? All data in this column will be lost. This action cannot be undone.`,
-      onConfirm: () => {
-        setColumns(columns.filter(c => c.id !== colId));
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
-      }
-    });
-  };
 
-  const updateHeader = (colId: string, newTitle: string): void => {
-    setColumns(columns.map(c => c.id === colId ? { ...c, title: newTitle } : c));
-  };
+
+
 
   // --- Handlers: Sorting & Filtering ---
   const handleSort = (columnId: string): void => {
@@ -720,6 +713,16 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
             <div className={`absolute inset-0 transition-colors duration-300 ${darkMode ? 'bg-zinc-900/70' : 'bg-zinc-900/70'}`} />
           </div>
 
+          {/* Real-time Clock */}
+          <div className="absolute top-6 right-6 z-20 text-right">
+            <div className="text-3xl font-bold text-white tracking-tight">
+              {currentTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <div className="text-xs font-medium text-zinc-400 uppercase tracking-widest mt-0.5">
+              {currentTime.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </div>
+          </div>
+
           <div className="relative z-10 p-6 sm:p-8">
             <TableToolbar 
               showArchived={showArchived}
@@ -759,8 +762,6 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
                 showFilters={showFilters}
                 darkMode={darkMode}
                 onSort={handleSort}
-                onUpdateHeader={updateHeader}
-                onDeleteColumn={deleteColumn}
                 onFilterChange={handleFilterChange}
               />
 
