@@ -72,11 +72,24 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
     }
   };
 
+  // Check if deadline is urgent (less than 4 days)
+  const isUrgent = (() => {
+    if (!row.col_3) return false;
+    const deadline = new Date(String(row.col_3));
+    const now = new Date();
+    const diffDays = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays >= 0 && diffDays < 4;
+  })();
+
   return (
     <div className={`group relative rounded-2xl border p-5 transition-all duration-300 hover:shadow-lg ${
-      darkMode 
-        ? 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900' 
-        : 'bg-white border-zinc-100 hover:border-zinc-200'
+      isUrgent
+        ? (darkMode 
+            ? 'bg-rose-950/30 border-rose-500/50 hover:border-rose-500 hover:bg-rose-950/40' 
+            : 'bg-rose-50 border-rose-300 hover:border-rose-400')
+        : (darkMode 
+            ? 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900' 
+            : 'bg-white border-zinc-100 hover:border-zinc-200')
     }`}>
       {/* Header: Status & Actions */}
       <div className="flex items-start justify-between mb-4">

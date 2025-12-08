@@ -17,7 +17,14 @@ export const ActiveProjectsGrid: React.FC<ActiveProjectsGridProps> = ({
   onArchive,
   onDelete
 }) => {
-  const activeProjects = rows.filter(row => String(row.col_5 || '').toLowerCase() === 'active');
+  const activeProjects = rows
+    .filter(row => String(row.col_5 || '').toLowerCase() === 'active')
+    .sort((a, b) => {
+      // Sort by deadline (earliest first = left to right)
+      const deadlineA = a.col_3 ? new Date(String(a.col_3)).getTime() : Infinity;
+      const deadlineB = b.col_3 ? new Date(String(b.col_3)).getTime() : Infinity;
+      return deadlineA - deadlineB;
+    });
 
   if (activeProjects.length === 0) return null;
 

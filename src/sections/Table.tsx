@@ -53,8 +53,18 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
   });
   
   // Sorting & Filtering States
-
-  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  // Initialize sortConfig from localStorage
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(() => {
+    const saved = localStorage.getItem('table_sort_config');
+    if (saved) {
+      try {
+        return JSON.parse(saved) as SortConfig;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [showArchived, setShowArchived] = useState<boolean>(false);
@@ -532,6 +542,15 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
 
 
 
+
+  // Persist sortConfig to localStorage whenever it changes
+  useEffect(() => {
+    if (sortConfig) {
+      localStorage.setItem('table_sort_config', JSON.stringify(sortConfig));
+    } else {
+      localStorage.removeItem('table_sort_config');
+    }
+  }, [sortConfig]);
 
   // --- Handlers: Sorting & Filtering ---
   const handleSort = (columnId: string): void => {

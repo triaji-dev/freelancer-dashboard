@@ -203,16 +203,20 @@ export const TableCell: React.FC<TableCellProps> = ({
 
     if (column.type === 'date') {
       return (
-        <div ref={dateAnchorRef} className="relative h-full flex items-center bg-blue">
-          {/* Use a div as the anchor ref holder, or we can attach ref to the container div above? 
-              The container div has 'h-full flex items-center', but passing that ref is fine. 
-          */}
+        <div ref={dateAnchorRef} className="relative h-full flex items-center">
+          <button
+            ref={inputRef as React.RefObject<HTMLButtonElement>}
+            autoFocus
+            className={commonInputClasses + " text-left cursor-default flex items-center justify-between"}
+          >
+            {row[column.id] ? formatDate(String(row[column.id])) : 'Set deadline...'}
+          </button>
+          
           <PortalDropdown
-             anchorRef={dateAnchorRef}
+             anchorRef={inputRef as React.RefObject<HTMLElement>}
              isOpen={true}
              darkMode={darkMode}
              width="w-72"
-             // Custom class for the picker which has specific styling
              className=""
           >
              <DateDurationPicker
