@@ -53,7 +53,7 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
   });
   
   // Sorting & Filtering States
-  // Initialize sortConfig from localStorage
+  // Initialize sortConfig from localStorage (fallback), then load from server
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(() => {
     const saved = localStorage.getItem('table_sort_config');
     if (saved) {
@@ -65,6 +65,7 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
     }
     return null;
   });
+  const [sortConfigLoaded, setSortConfigLoaded] = useState(false);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [showArchived, setShowArchived] = useState<boolean>(false);
@@ -543,14 +544,63 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
 
 
 
-  // Persist sortConfig to localStorage whenever it changes
+  // Load sortConfig from Supabase on mount
+  useEffect(() => {
+    if (!user || sortConfigLoaded) return;
+    
+    const loadPreferences = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('preferences')
+          .eq('id', user.id)
+          .single();
+        
+        if (!error && data?.preferences?.sortConfig) {
+          setSortConfig(data.preferences.sortConfig);
+          localStorage.setItem('table_sort_config', JSON.stringify(data.preferences.sortConfig));
+        }
+      } catch (error) {
+        console.error('Error loading preferences:', error);
+      } finally {
+        setSortConfigLoaded(true);
+      }
+    };
+    
+    loadPreferences();
+  }, [user, sortConfigLoaded]);
+
+  // Persist sortConfig to localStorage and Supabase whenever it changes
   useEffect(() => {
     if (sortConfig) {
       localStorage.setItem('table_sort_config', JSON.stringify(sortConfig));
     } else {
       localStorage.removeItem('table_sort_config');
     }
-  }, [sortConfig]);
+    
+    // Save to Supabase (debounced via the state change)
+    if (!user || !sortConfigLoaded) return;
+    
+    const savePreferences = async () => {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            preferences: { sortConfig },
+            updated_at: new Date().toISOString()
+          });
+        
+        if (error) {
+          console.error('Error saving preferences:', error);
+        }
+      } catch (error) {
+        console.error('Error saving preferences:', error);
+      }
+    };
+    
+    savePreferences();
+  }, [sortConfig, user, sortConfigLoaded]);
 
   // --- Handlers: Sorting & Filtering ---
   const handleSort = (columnId: string): void => {
