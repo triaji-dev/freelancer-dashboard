@@ -10,7 +10,7 @@ import { X, ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface TableTutorialProps {
   run: boolean;
-  onFinish: () => void;
+  onFinish: (skipped: boolean) => void;
   darkMode: boolean;
 }
 
@@ -147,8 +147,10 @@ export const TableTutorial: React.FC<TableTutorialProps> = ({
 
   const handleJoyrideCallback = (data: CallBackProps) => {
     const { status } = data;
-    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
-      onFinish();
+    if (status === STATUS.FINISHED) {
+      onFinish(false); // Completed fully
+    } else if (status === STATUS.SKIPPED) {
+      onFinish(true); // Skipped
     }
   };
 

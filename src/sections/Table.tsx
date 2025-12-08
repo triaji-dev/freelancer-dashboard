@@ -87,11 +87,11 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
     if (!user) return;
 
     const checkTutorialStatus = async () => {
-      // 1. Check Local Storage first for immediate feedback
-      const localSeen = localStorage.getItem('tutorial_seen');
+      // Use user-specific localStorage key to prevent cross-account issues
+      const localStorageKey = `tutorial_seen_${user.id}`;
+      const localSeen = localStorage.getItem(localStorageKey);
       
-      // If locally marked as seen, we can tentatively trust it to avoid flicker
-      // But we still check Supabase to be sure (e.g. cleared cache but account exists)
+      // If this specific user marked as seen locally, trust it
       if (localSeen === 'true') {
         return;
       }
@@ -121,7 +121,7 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
            setRunTutorial(true);
         } else {
            // If Supabase says seen but local didn't know, update local
-           localStorage.setItem('tutorial_seen', 'true');
+           localStorage.setItem(localStorageKey, 'true');
         }
       } catch (error) {
         console.error('Unexpected error checking tutorial:', error);
@@ -136,15 +136,17 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
   /* Ref to prevent double-execution of finish logic (e.g. React Strict Mode) */
   const hasFinishedRef = useRef(false);
 
-  const handleTutorialFinish = async () => {
+  const handleTutorialFinish = async (skipped: boolean) => {
     // Prevent double execution
     if (hasFinishedRef.current) return;
     hasFinishedRef.current = true;
 
     setRunTutorial(false);
     
-    // 1. Mark locally immediately
-    localStorage.setItem('tutorial_seen', 'true');
+    // 1. Mark locally immediately (user-specific key)
+    if (user) {
+      localStorage.setItem(`tutorial_seen_${user.id}`, 'true');
+    }
 
     if (!user) return;
 
@@ -165,7 +167,11 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
       console.error('Error updating profile:', error);
     }
 
-    // 2. Auto-create Dummy Entry (Independent of profile success)
+    // 3. Auto-create Dummy Entry ONLY if tutorial was completed (not skipped)
+    if (skipped) {
+      return; // Don't create dummy entry if user skipped
+    }
+
     try {
       const deadlineDate = new Date();
       deadlineDate.setDate(deadlineDate.getDate() + 7);
