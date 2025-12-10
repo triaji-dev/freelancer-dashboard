@@ -175,7 +175,7 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
     try {
       const deadlineDate = new Date();
       deadlineDate.setDate(deadlineDate.getDate() + 7);
-      const formattedDeadline = deadlineDate.toISOString().slice(0, 16).replace('T', ' '); // YYYY-MM-DD HH:mm
+      const formattedDeadline = deadlineDate.toISOString(); // ISO 8601 format for Supabase
 
       const dummyEntry = {
         user_id: user.id,
@@ -240,6 +240,7 @@ export default function Table({ darkMode, runTutorial, setRunTutorial }: TablePr
         if (error) throw error;
 
         if (data) {
+
           const mappedRows: Row[] = data.map(item => ({
             id: item.id,
             col_1: item.name || '',

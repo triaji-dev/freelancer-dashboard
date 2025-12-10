@@ -31,13 +31,9 @@ export const DateDurationPicker: React.FC<DateDurationPickerProps> = ({ darkMode
   }, [days, hours]);
 
   const handleSave = () => {
-    // Format: YYYY-MM-DD HH:mm
-    const yyyy = previewTime.getFullYear();
-    const mm = String(previewTime.getMonth() + 1).padStart(2, '0');
-    const dd = String(previewTime.getDate()).padStart(2, '0');
-    const hh = String(previewTime.getHours()).padStart(2, '0');
-    const min = String(previewTime.getMinutes()).padStart(2, '0');
-    onSave(`${yyyy}-${mm}-${dd} ${hh}:${min}`);
+    // Use toISOString() to convert local time to UTC format
+    // This ensures Supabase stores the correct timestamp regardless of timezone
+    onSave(previewTime.toISOString());
   };
 
   return (
